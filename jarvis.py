@@ -1,12 +1,9 @@
-import ollama
+from jarvis_message import message
+from handle import handle
 
 while True:
-    prompt = input("> ")
-
-    response = ollama.chat(model='qwen:7b', messages=[
-      {
-        'role': 'user',
-        'content': prompt,
-      },
-    ])
-    print(response['message']['content'])
+    prompt = {
+    'role': 'user',
+    "content": input("> ")
+}
+    print("Jarvis: ", handle(prompt, message)["message"]["content"])
