@@ -1,10 +1,8 @@
 from collections.abc import Callable
 from schemas import Message
+from config import LLM_MODEL
 
 import ollama
-import os
-
-LLM_MODEL = os.environ["LLM_MODEL"]
 
 def call_llm(messages: list[Message], tools: list[Callable] | None = None):
     return ollama.chat(

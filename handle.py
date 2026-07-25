@@ -15,6 +15,7 @@ def handle(user_prompt, message: list[Message]) -> ChatResponse:
         for tool in tools:
             name = tool["function"]["name"]
             args = tool["function"]["arguments"]
+            print(f"{name} tool called")
             if not name in REGISTRY:
                 result = f"Error: cannot find tool with name {name}"
             else:
