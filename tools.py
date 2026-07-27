@@ -4,11 +4,11 @@ from datetime import datetime
 from pathlib import Path
 import os
 
-def get_time() -> list[str] | str:
+def get_time() -> str:
     """Get the current local time. Call this when the user asks what time it is."""
     return str(datetime.now().astimezone())
 
-def find_file(file_name: str) -> str | list[str]:
+def find_file(file_name: str) -> str:
     """Find the full path of a file by its name.
     Call this FIRST whenever the user mentions a file but does not give a full path.
     Never guess a file extension — search by the name the user gave
@@ -31,13 +31,13 @@ def find_file(file_name: str) -> str | list[str]:
     print("🎏find_file func: ", "\n".join(matches))
     return "\n".join(matches)
 
-def read_file(path):
+def read_file(path: str) -> str:
     """Allows you to read a file content. 
     Only call this, when you already have a full path - normally one returned by find_file.
     If you only know part of the name, call find_file first
     Resolve a model-supplied path and keep it inside SANDBOX
     Args:
-        path: Path to the file relative to the project root, e.g. 'Jarvis/tools.py'
+        path: Path to the file relative to the project root, e.g. "D:/Jarvis/tools.py"
     """
     try:
         target = Path(path).resolve()
@@ -45,7 +45,7 @@ def read_file(path):
         try:
             target.relative_to(root)
         except ValueError:
-            raise ValueError(...)
+            raise ValueError(f"Path outside allowed directory: {path}")
         if not target.exists():
             return (f"File {target} not found"
                     f"call find_file with a partial name")
@@ -56,6 +56,37 @@ def read_file(path):
         return read
     except Exception as e:
         return f"Exception error {e}"
-    
-available_tools: list[Callable] = [get_time, find_file, read_file] # Add available functions here
+
+def list_dir(path: str) -> list[str]:
+    """Allows you to check the structure of the directory
+    Use it when the file name is unknown to you, or to find a specific file
+    Args:
+        path: Path to the directory relative to the project root, e.g. 'Jarvis' 
+    """
+    target = Path(path).resolve()
+    root = Path(SANDBOX).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        raise ValueError(f"Path outside allowed directory: {path}")
+    print("list_dir func", "arguments:", path, "result: ", os.listdir(path))
+    return os.listdir(path)
+
+def edit_file():
+    pass
+
+def create_file():
+    pass
+
+def write_file():
+    pass
+
+def delete_file():
+    pass
+
+def create_directory():
+    pass
+
+
+available_tools: list[Callable] = [get_time, find_file, read_file, list_dir] # Add available functions here
 REGISTRY: dict[str, Callable] = {f.__name__: f for f in available_tools}

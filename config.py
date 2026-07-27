@@ -9,4 +9,4 @@ if not LLM_MODEL:
     raise RuntimeError("LLM_MODEL is not set — add it to .env")
 
 SANDBOX= os.environ["SANDBOX"]
-SKIP= os.environ["SKIP"]
+SKIP: set[str] = {".venv", "__pycache__", ".git", "node_modules", ".vscode"}
