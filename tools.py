@@ -89,6 +89,7 @@ def edit_file(path: str, old_text: str, new_text: str) -> str:
         return f"Path outside allowed directory: {path}"
     if not target.is_file():
         return f"Not a file {target}"
+    
     with open(file=target, mode="r", encoding="utf-8", newline="") as f:
         text = f.read()
         count = text.count(old_text)
@@ -100,13 +101,38 @@ def edit_file(path: str, old_text: str, new_text: str) -> str:
             )        
         if count > 1:
             return f"old_text appears {count} times, please, specify which one to make it unique. Do not ask the user — the correct text is in the file"
+        if new_text and new_text in text:
+            return ("The file already contains new_text — this edit was already applied. "
+            "Call read_file to check the current content before editing again.")
     with open(file=target, mode="w", encoding="utf-8", newline="") as f:
         f.write(text.replace(old_text, new_text, 1))
-    print("edit_file func", "arguments:", path, old_text, new_text)
+    print("edit_file func", "arguments:", path, old_text, new_text, "Successfully")
     return f"Edited successfully"
 
-def create_file():
-    pass
+def create_file(path: Path, content: str = "") -> str:
+    """Created a new file in allowed directory with optional content
+    Call this whenewer user asks to create a new empty, or with some text / lines of code file 
+    Before calling this, check that the directory exists with list_dir
+    Fails if the file already exists — use edit_file to change an existing file
+    Args:
+    path: Full path of the new file, INCLUDING
+        the file name and extension. Never pass a directory on its own.
+        Example: user says "create example.py in the Jarvis folder" -> pass "Jarvis/example.py"
+    file_content: The COMPLETE text of the file. Write the whole script here in
+        one call. Never create a file and then grow it with edit_file    """
+    target = Path(path).resolve()
+    root = Path(SANDBOX).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        return f"Path outside allowed directory: {path}"
+    try:
+        with open(target, "x", encoding="utf-8", newline="") as f:
+            f.write(content)
+    except OSError as e:
+        return f"Could not create file: {type(e).__name__}: {e}"
+    print("create_file func", "arguments:", path, content, "Successfully")
+    return f"File {path} created successfully"
 
 # def write_file():
 #     pass
@@ -118,5 +144,5 @@ def create_directory():
     pass
 
 
-available_tools: list[Callable] = [get_time, find_file, read_file, list_dir, edit_file] # Add available functions here
+available_tools: list[Callable] = [get_time, find_file, read_file, list_dir, edit_file, create_file] # Add available functions here
 REGISTRY: dict[str, Callable] = {f.__name__: f for f in available_tools}
