@@ -67,7 +67,7 @@ def list_dir(path: str) -> str | list[str]:
     except ValueError as e:
         return str(e)
     print("list_dir func", "arguments:", path, "result: ", os.listdir(path))
-    return os.listdir(path)
+    return f"Contents of {path}:\n" + "\n".join(os.listdir(path))
 
 def edit_file(path: str, old_text: str, new_text: str) -> str:
     """Change the context of a file by replacing an exact piece of text
@@ -115,6 +115,7 @@ def create_file(path: str, content: str = "") -> str:
         Example: user says "create example.py in the Jarvis folder" -> pass "Jarvis/example.py"
     file_content: The COMPLETE text of the file. Write the whole script here in
         one call. Never create a file and then grow it with edit_file    """
+    print("create_file func", "arguments:", path, content)
     try:
         target = safe_path(path)
     except ValueError as e:
@@ -124,7 +125,6 @@ def create_file(path: str, content: str = "") -> str:
             f.write(content)
     except OSError as e:
         return f"Could not create file: {type(e).__name__}: {e}"
-    print("create_file func", "arguments:", path, content, "Successfully")
     return f"File {path} created successfully"
 
 # def write_file():
@@ -153,13 +153,34 @@ def delete_file(path: str) -> str:
             return f"Deletion cancalled by user: {path}"
         os.remove(target)
     except OSError as e:
-        return f"Could not delete: {e}"   
+        return f"Could not delete: {e}"
+    print("delete_file func", "arguments:", path, f"File deleted {path}")
     return f"File deleted successfully {target}"
         
-def create_directory():
-    pass
+def create_directory(path: str) -> str:
+    """Created a new directory in allowed directories
+    Call this whenewer user asks to create a directory 
+    Before calling this, check that the path is exists with list_dir
+    Fails if the dicrectory already exists
+    Args:
+    path: Full path of the new directory, INCLUDING
+        the directory name
+        Example: user says "create Jarvis in the example directory-> pass "example/Jarvis"
+        """
+    try:
+        target = safe_path(path)
+    except ValueError as e:
+        return str(e)
+    if target.exists():
+        return f"Directory already exists: {path}"
+    try:
+        target.mkdir()
+    except OSError as e:
+        return f"Could not create directory: {type(e).__name__}: {e}"
+    print("create_directory func", "arguments:", target, f"Directory created {target}")
+    return f"Directory {target} created successfully"
 
 
-available_tools: list[Callable] = [get_time, find_file, read_file, 
-                                   list_dir, edit_file, create_file, delete_file] # Add available functions here
+available_tools: list[Callable] = [get_time, find_file, read_file, list_dir, 
+                                   edit_file, create_file, delete_file, create_directory] # Add available functions here
 REGISTRY: dict[str, Callable] = {f.__name__: f for f in available_tools}
