@@ -1,9 +1,9 @@
+from jarvis_message import message
 from tools import available_tools, REGISTRY
 from call_llm import call_llm
-from schemas import Message
 from ollama import ChatResponse
 
-def handle(user_prompt, message: list[Message]) -> ChatResponse:
+def handle(user_prompt) -> ChatResponse:
     message.append(user_prompt)
 
     while True:
