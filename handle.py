@@ -3,6 +3,7 @@ from tools import available_tools, REGISTRY
 from call_llm import call_llm
 from ollama import ChatResponse
 
+
 def handle(user_prompt) -> ChatResponse:
     message.append(user_prompt)
 
