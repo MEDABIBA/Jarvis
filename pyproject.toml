@@ -8,5 +8,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "faster-whisper>=1.2.1",
     "ollama>=0.6.2",
+    "piper-tts>=1.6.0",
+    "realtimestt[faster-whisper,porcupine]>=1.0.2",
     "sounddevice>=0.5.5",
 ]
