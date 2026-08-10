@@ -1,19 +1,24 @@
 from handle import handle
 from tts import speak, speaking
+from key_bindings import make_bindings
+from state import state
+from prompt_toolkit import PromptSession
+from prompt_toolkit.patch_stdout import patch_stdout
 from RealtimeSTT.audio_recorder import AudioToTextRecorder
+from config import recorder
 import queue as q
 import threading
 
 queue: q.Queue[str] = q.Queue()
 
-tts_enabled = True  # Strict state, for replacement
-
+session = PromptSession(key_bindings=make_bindings(recorder))
 
 def input_loop():
-    while True:
-        text = input("> ")
-        if text.strip():
-            queue.put(text)
+    with patch_stdout():
+        while True:
+            text = session.prompt("> ")
+            if text.strip():
+                queue.put(text)
 
 
 def voice_loop(recorder: AudioToTextRecorder):
@@ -26,17 +31,6 @@ def voice_loop(recorder: AudioToTextRecorder):
 
 
 def main():
-    recorder = AudioToTextRecorder(
-        model="small",
-        device="cpu",
-        compute_type="int8",
-        batch_size=1,
-        wake_words="jarvis",
-        wake_word_timeout=5,
-        post_speech_silence_duration=2,
-        wake_words_sensitivity=1,
-        spinner=False,
-    )
 
     threading.Thread(target=input_loop, daemon=True).start()
     threading.Thread(target=voice_loop, args=[recorder], daemon=True).start()
@@ -48,10 +42,11 @@ def main():
             except q.Empty:
                 continue
             try:
+                print("Let me think")
                 prompt = {"role": "user", "content": text}
                 res = handle(prompt)["message"]["content"]
                 print("Jarvis: ", res)
-                if tts_enabled and res:
+                if state.tts and res:
                     speak(res)
             except Exception as e:
                 print(f" Error: {e}")
