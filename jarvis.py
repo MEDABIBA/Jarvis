@@ -5,13 +5,13 @@ from state import state
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 from RealtimeSTT.audio_recorder import AudioToTextRecorder
-from config import recorder
+from stt import get_recorder
 import queue as q
 import threading
 
 queue: q.Queue[str] = q.Queue()
 
-session = PromptSession(key_bindings=make_bindings(recorder))
+session = PromptSession(key_bindings=make_bindings(get_recorder()))
 
 def input_loop():
     with patch_stdout():
@@ -33,7 +33,7 @@ def voice_loop(recorder: AudioToTextRecorder):
 def main():
 
     threading.Thread(target=input_loop, daemon=True).start()
-    threading.Thread(target=voice_loop, args=[recorder], daemon=True).start()
+    threading.Thread(target=voice_loop, args=[get_recorder()], daemon=True).start()
 
     try:
         while True:
@@ -54,7 +54,7 @@ def main():
     except KeyboardInterrupt:
         print("\nShutting down.")
     finally:
-        recorder.shutdown()
+        get_recorder().shutdown()
 
 
 if __name__ == "__main__":
