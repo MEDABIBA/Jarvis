@@ -1,6 +1,6 @@
-from typing import TypedDict
+from typing import TypedDict, Literal
 
 
 class Message(TypedDict):
-    role: str
+    role: Literal["system", "user", "assistant", "tool"]
     content: str

@@ -1,6 +1,8 @@
 from RealtimeSTT.audio_recorder import AudioToTextRecorder
 import os
 from dotenv import load_dotenv
+import anthropic
+from functools import cache
 
 load_dotenv()
 
@@ -24,20 +26,26 @@ MODEL_KEYS = {
     "gpt": "GPT_API_KEY",
 }
 
-def available_models():
+def available_models() -> list[str]:
     res = []
     for name, env_var in MODEL_KEYS.items():
-        if env_var is None or os.environ.get(env_var):
-            res.append(name)
+        if env_var is not None:
+            value = os.environ.get(env_var, "").strip()
+            if not value:
+               continue  
+            if "api-key" in value.lower():
+                continue          
+        res.append(name)
     return res
 
 LOCAL_LLM = os.environ["LOCAL_LLM"]
-if not LOCAL_LLM:
-    raise RuntimeError("LOCAL_LLM is not set — add it to .env")
-
-# ANTHROPIC_API = os.environ["ANTHROPIC_API_KEY"]
-# if ANTHROPIC_API:
-#     state.available_models.append("claude")
 
 SANDBOX = os.environ["SANDBOX"]
+
 SKIP: set[str] = {".venv", "__pycache__", ".git", "node_modules", ".vscode"}
+
+@cache
+def claude_client():
+    ANTHROPIC_API = os.environ["ANTHROPIC_API_KEY"]
+    claude = anthropic.Anthropic(api_key=ANTHROPIC_API)
+    return claude
