@@ -1,0 +1,40 @@
+[project]
+name = "jarvis"
+version = "0.1.0"
+description = "A voice-controlled AI assistant with file system access"
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [{ name = "Slava", email = "twojemail@gmail.com" }]
+maintainers = [
+  { name = "Adrian Just", email = "iamadyoo@gmail.com" },
+]
+dependencies = [
+  "loguru>=0.7.3",
+  "pydantic>=2.13.4",
+  "pydantic-settings>=2.15.0",
+]
+
+[project.scripts]
+jarvis = "jarvis.__main__:main"
+
+[dependency-groups]
+lint = [
+  "ruff>=0.16.3",
+  "ty>=0.0.72",
+]
+test = [
+  "pytest>=9.1.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+exclude = ["tests/*", "docs/*"]
+fix = true
+line-length = 88
+
+[tool.ruff.lint]
+select = ["UP", "RUF", "I", "PIE", "PYI", "F", "B9", "C4", "SIM", "E"]
+ignore = ["E501"]
