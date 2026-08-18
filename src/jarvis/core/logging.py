@@ -7,6 +7,14 @@ from jarvis.core import get_settings
 
 
 def setup_logging() -> None:
+    """Configure application-wide logging handlers and sinks.
+
+    Removes default Loguru handlers and establishes two output destinations:
+    1. Standard error (console) sink with colored, level-sensitive formatting
+       (DEBUG or INFO based on application settings).
+    2. Daily rotating, compressed log file sink in the `./logs` directory with
+       asynchronous thread-safe queuing and dynamic diagnostic reporting.
+    """
     settings = get_settings()
 
     logger.remove()
