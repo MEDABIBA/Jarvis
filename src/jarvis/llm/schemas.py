@@ -1,0 +1,27 @@
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field
+
+
+class ToolCallFunction(BaseModel):
+    name: str
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+
+class ToolCall(BaseModel):
+    id: str | None = None
+    type: str = "function"
+    function: ToolCallFunction
+
+
+class ChatMessage(BaseModel):
+    role: Literal["system", "user", "assistant", "tool"]
+    content: str | None = None
+    tool_calls: list[ToolCall] | None = None
+    tool_call_id: str | None = None
+    name: str | None = None
+
+
+class ModelResponse(BaseModel):
+    message: ChatMessage
+    raw_response: Any = None

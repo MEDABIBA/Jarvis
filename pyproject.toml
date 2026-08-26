@@ -1,17 +1,49 @@
 [project]
 name = "jarvis"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "A voice-controlled AI assistant with file system access"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = [
-    "anthropic>=0.121.0",
-    "dotenv>=0.9.9",
-    "faster-whisper>=1.2.1",
-    "ollama>=0.6.2",
-    "piper-tts>=1.6.0",
-    "prompt-toolkit>=3.0.53",
-    "realtimestt[faster-whisper,porcupine]>=1.0.2",
-    "silero-vad>=6.2.1",
-    "sounddevice>=0.5.5",
+authors = [{ name = "Slava", email = "twojemail@gmail.com" }]
+maintainers = [
+  { name = "Adrian Just", email = "iamadyoo@gmail.com" },
 ]
+dependencies = [
+  "anthropic>=1.0.0",
+  "faster-whisper>=1.2.1",
+  "loguru>=0.7.3",
+  "numpy>=2.5.2",
+  "ollama>=0.6.2",
+  "piper-tts>=1.7.0",
+  "prompt-toolkit>=3.0.53",
+  "pydantic>=2.13.4",
+  "pydantic-settings>=2.15.0",
+  "realtimestt[faster-whisper,porcupine]>=1.0.4",
+  "silero-vad>=6.2.1",
+  "sounddevice>=0.5.6",
+]
+
+[project.scripts]
+jarvis = "jarvis.__main__:main"
+
+[dependency-groups]
+lint = [
+  "ruff>=0.16.3",
+  "ty>=0.0.72",
+]
+test = [
+  "pytest>=9.1.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+exclude = ["tests/*", "docs/*"]
+fix = true
+line-length = 88
+
+[tool.ruff.lint]
+select = ["UP", "RUF", "I", "PIE", "PYI", "F", "B9", "C4", "SIM", "E"]
+ignore = ["E501"]
