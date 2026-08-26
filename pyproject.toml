@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "A voice-controlled AI assistant with file system access"
 readme = "README.md"
 requires-python = ">=3.13"
-authors = [{ name = "Slava", email = "twojemail@gmail.com" }]
+authors = [{ name = "Slava", email = "s.l.a.v.a.2007007@gmail.com" }]
 maintainers = [
   { name = "Adrian Just", email = "iamadyoo@gmail.com" },
 ]
