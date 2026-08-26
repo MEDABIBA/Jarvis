@@ -31,8 +31,9 @@ class AppSettings(BaseSettings):
     )
 
     debug: bool = True
-    local_llm: str
+    local_llm: str = "mistral"
     sandbox: Path = Path("./sandbox")
+    voices_dir: Path = Path("./voices")
 
     anthropic_api_key: SecretStr | None = None
     gemini_api_key: SecretStr | None = None
