@@ -31,7 +31,7 @@ class AppSettings(BaseSettings):
     )
 
     debug: bool = True
-    local_llm: str = "mistral"
+    local_llm: str
     sandbox: Path = Path("./sandbox")
     voices_dir: Path = Path("./voices")
 
