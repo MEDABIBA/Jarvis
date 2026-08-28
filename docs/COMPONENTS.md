@@ -12,7 +12,7 @@ Responsible for environment resolution, structured logging, and runtime global s
 classDiagram
 class AppSettings {
 +bool debug
-+str local_llm
++str local_model
 +Path sandbox
 +Path voices_dir
 +SecretStr anthropic_api_key

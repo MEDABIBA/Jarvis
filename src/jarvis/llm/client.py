@@ -1,8 +1,8 @@
 from collections.abc import Callable
-from typing import Any
 
 import anthropic
 import ollama
+from anthropic.types import MessageParam
 from loguru import logger
 
 from jarvis.core.config import get_settings
@@ -11,21 +11,14 @@ from jarvis.llm.prompts import SYSTEM_PROMPT
 from jarvis.llm.schemas import ChatMessage, ModelResponse, ToolCall, ToolCallFunction
 
 
-def _format_tools_for_anthropic(tools: list[Callable]) -> list[dict[str, Any]]:
-    # Anthropic tool formatting helper
-    tool_specs: list[dict[str, Any]] = []
-    for fn in tools:
-        tool_specs.append(
-            {
-                "name": fn.__name__,  # ty: ignore[unresolved-attribute]
-                "description": (fn.__doc__ or "").strip(),
-                "input_schema": {
-                    "type": "object",
-                    "properties": {},  # Model extracts based on signature/docstring
-                },
-            }
-        )
-    return tool_specs
+def to_anthropic(messages: list[ChatMessage]) -> list[MessageParam]:
+    """Convert internal history structure to the anthropic api params"""
+    res: list[MessageParam] = []
+    for m in messages:
+        role = m.role
+        if role in ("user", "assistant"):
+            res.append({"content": m.content or "", "role": role})
+    return res
 
 
 def call_llm(
@@ -46,7 +39,7 @@ def call_llm(
                 if m.content is not None
             ]
             response = ollama.chat(
-                model=settings.local_llm,
+                model=settings.local_model,
                 messages=raw_msgs,
                 tools=tools,
             )
@@ -81,25 +74,16 @@ def call_llm(
                 api_key=settings.anthropic_api_key.get_secret_value()
             )
 
-            anthropic_messages: list[dict[str, Any]] = []
-            for m in messages:
-                if m.role == "system":
-                    continue
-                if m.role in ("user", "assistant"):
-                    anthropic_messages.append(
-                        {"role": m.role, "content": m.content or ""}
-                    )
-
             resp = client.messages.create(
-                model="claude-3-7-sonnet-20250219",
-                max_tokens=2048,
+                model=settings.anthropic_model,
+                max_tokens=4096,
                 system=SYSTEM_PROMPT,
-                messages=anthropic_messages,  # ty: ignore[invalid-argument-type]
+                messages=to_anthropic(messages),
             )
 
             text_content = ""
             for block in resp.content:
-                if getattr(block, "type", "") == "text":
+                if block.type == "text":
                     text_content += block.text
 
             return ModelResponse(

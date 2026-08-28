@@ -69,7 +69,7 @@ Create a `.env` configuration file in the project root:
 # Core Runtime Configuration
 
 JARVIS_DEBUG=false
-JARVIS_LOCAL_LLM="mistral"
+JARVIS_LOCAL_MODEL="mistral"
 JARVIS_SANDBOX="./sandbox"
 
 # Cloud Model API Keys (Optional - leave empty for offline-only mode)
@@ -110,7 +110,7 @@ All settings are resolved through `pydantic-settings` and can be supplied as sys
 | Parameter                  | Type        | Default     | Description                                                   |
 | :------------------------- | :---------- | :---------- | :------------------------------------------------------------ |
 | `JARVIS_DEBUG`             | `bool`      | `true`      | Enables verbose debug logging and detailed stack diagnostics. |
-| `JARVIS_LOCAL_LLM`         | `str`       | _Required_  | Local model identifier target for Ollama runtime.             |
+| `JARVIS_LOCAL_MODEL`       | `str`       | _Required_  | Local model identifier target for Ollama runtime.             |
 | `JARVIS_SANDBOX`           | `Path`      | `./sandbox` | Root directory boundary for agent file system operations.     |
 | `JARVIS_ANTHROPIC_API_KEY` | `SecretStr` | `None`      | API credential for Anthropic Claude integration.              |
 | `JARVIS_GEMINI_API_KEY`    | `SecretStr` | `None`      | API credential for Google Gemini integration.                 |

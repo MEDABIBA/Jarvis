@@ -13,7 +13,7 @@ class AppSettings(BaseSettings):
 
     Attributes:
         debug: Toggles debug-level logging and detailed exception diagnostics.
-        local_llm: Model identifier or local path for the default offline LLM.
+        local_model: Model identifier or local path for the default offline LLM.
         sandbox: Working directory for sandboxed file and execution operations.
         anthropic_api_key: Optional API key for Anthropic Claude models.
         gemini_api_key: Optional API key for Google Gemini models.
@@ -31,9 +31,12 @@ class AppSettings(BaseSettings):
     )
 
     debug: bool = True
-    local_llm: str
+    local_model: str
     sandbox: Path = Path("./sandbox")
     voices_dir: Path = Path("./voices")
+
+    anthropic_model: str = "claude-sonnet-5"
+    # gemini_model / gpt_model — Add with branches implementation
 
     anthropic_api_key: SecretStr | None = None
     gemini_api_key: SecretStr | None = None
@@ -85,4 +88,4 @@ def get_settings() -> AppSettings:
     Returns:
         AppSettings: The initialized and cached application configuration.
     """
-    return AppSettings()
+    return AppSettings()  # pyright: ignore
