@@ -9,12 +9,23 @@ from jarvis.tools.path import safe_path
 
 
 def get_time() -> str:
-    """Get the current local date and time with timezone information."""
+    """Get the current local date and time with timezone information.
+
+    Call this when the user asks what time or what date it is.
+    """
     return str(datetime.now().astimezone())
 
 
 def find_file(file_name: str) -> str:
-    """Recursively search for files in the sandbox matching a query string."""
+    """Find files inside the sandbox by a partial name.
+
+    Call this FIRST whenever the user mentions a file but does not give a full
+    path. Never guess a file extension — search by the name the user gave.
+
+    Args:
+        file_name: Any part of the file name, without guessing an extension.
+            Example: user says "the jarvis file" -> pass "jarvis".
+    """
     settings = get_settings()
     sandbox_root = settings.sandbox.resolve()
 
@@ -40,7 +51,15 @@ def find_file(file_name: str) -> str:
 
 
 def read_file(path: str) -> str:
-    """Read full text content of a file within the sandbox."""
+    """Read the full text content of a file inside the sandbox.
+
+    Call this only when you already have a path — normally one returned by
+    find_file. If you only know part of the name, call find_file first.
+
+    Args:
+        path: Path relative to the sandbox root, as returned by find_file.
+            Example: "notes/todo.txt".
+    """
     try:
         target = safe_path(path)
         if not target.exists():
@@ -57,7 +76,15 @@ def read_file(path: str) -> str:
 
 
 def list_dir(path: str = ".") -> str:
-    """List directory contents within the sandbox."""
+    """List the contents of a directory inside the sandbox.
+
+    Use this to explore the structure when you do not know where a file lives.
+    Prefer find_file when you already know part of the file name.
+
+    Args:
+        path: Directory path relative to the sandbox root. Defaults to the
+            sandbox root itself. Example: "notes".
+    """
     try:
         target = safe_path(path)
         if not target.exists():
@@ -78,7 +105,17 @@ def list_dir(path: str = ".") -> str:
 
 
 def edit_file(path: str, old_text: str, new_text: str) -> str:
-    """Replace an exact single occurrence of text inside a sandbox file."""
+    """Replace an exact single occurrence of text inside a sandbox file.
+
+    Call this whenever the user asks to change, fix, rename or remove something
+    inside an existing file. Never ask the user for the exact text — call
+    read_file first and copy it verbatim.
+
+    Args:
+        path: Path inside the sandbox, as returned by find_file.
+        old_text: Exact text to replace. Must occur exactly once in the file.
+        new_text: Replacement text. An empty string deletes old_text.
+    """
     try:
         target = safe_path(path)
         if not target.is_file():
@@ -103,7 +140,19 @@ def edit_file(path: str, old_text: str, new_text: str) -> str:
 
 
 def create_file(path: str, content: str = "") -> str:
-    """Create a new file in the sandbox with specified initial content."""
+    """Create a new file inside the sandbox with optional initial content.
+
+    Call this when the user asks to create a new file, empty or with content.
+    Fails if the file already exists — use edit_file to change an existing one.
+
+    Args:
+        path: Full path of the new file relative to the sandbox root, including
+            the file name and extension. Never pass a directory on its own.
+            Example: user says "create example.py in the notes folder" ->
+            pass "notes/example.py".
+        content: The complete text of the file. Write the whole script in this
+            single call — never create an empty file and grow it with edit_file.
+    """
     try:
         target = safe_path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -121,7 +170,15 @@ def create_file(path: str, content: str = "") -> str:
 
 
 def delete_file(path: str) -> str:
-    """Delete a file permanently inside the sandbox."""
+    """Permanently delete a file inside the sandbox.
+
+    Call this ONLY when the user explicitly asks to delete or remove a file.
+    ALWAYS call find_file first to get the real path — never guess it and never
+    ask the user for it. The deletion cannot be undone.
+
+    Args:
+        path: Exact path returned by find_file.
+    """
     try:
         target = safe_path(path)
         if not target.exists():
@@ -141,7 +198,17 @@ def delete_file(path: str) -> str:
 
 
 def create_directory(path: str) -> str:
-    """Create a new directory hierarchy in the sandbox."""
+    """Create a new directory inside the sandbox.
+
+    Call this when the user asks to create a directory. Fails if the path
+    already exists — call list_dir first if you are unsure.
+
+    Args:
+        path: Full path of the new directory relative to the sandbox root,
+            including the directory name.
+            Example: user says "create Jarvis in the example directory" ->
+            pass "example/Jarvis".
+    """
     try:
         target = safe_path(path)
         if target.exists():
