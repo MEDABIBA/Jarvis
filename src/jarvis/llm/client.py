@@ -79,8 +79,17 @@ def call_llm(
                 max_tokens=4096,
                 system=SYSTEM_PROMPT,
                 messages=to_anthropic(messages),
+                output_config={"effort": "medium"},
+                cache_control={"type": "ephemeral"},
             )
 
+            logger.debug(
+                "tokens: fresh={} write={} read={} out={}",
+                resp.usage.input_tokens,
+                resp.usage.cache_creation_input_tokens,
+                resp.usage.cache_read_input_tokens,
+                resp.usage.output_tokens,
+            )
             text_content = ""
             for block in resp.content:
                 if block.type == "text":

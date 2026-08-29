@@ -15,8 +15,8 @@ def get_recorder() -> AudioToTextRecorder:
         batch_size=1,
         wake_words="jarvis",
         wake_word_timeout=5,
-        post_speech_silence_duration=2,
-        wake_words_sensitivity=0.6,
+        post_speech_silence_duration=1.5,
+        wake_words_sensitivity=0.8,
         on_wakeword_detected=lambda: logger.info(
             "Wake word detected! Listening for command..."
         ),
