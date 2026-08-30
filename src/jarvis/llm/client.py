@@ -2,28 +2,18 @@ from collections.abc import Callable
 
 import anthropic
 import ollama
-from anthropic.types import MessageParam
 from loguru import logger
 
 from jarvis.core.config import get_settings
 from jarvis.core.state import state
+from jarvis.llm.adapters import to_anthropic, to_anthropic_tools
 from jarvis.llm.prompts import SYSTEM_PROMPT
 from jarvis.llm.schemas import ChatMessage, ModelResponse, ToolCall, ToolCallFunction
 
 
-def to_anthropic(messages: list[ChatMessage]) -> list[MessageParam]:
-    """Convert internal history structure to the anthropic api params"""
-    res: list[MessageParam] = []
-    for m in messages:
-        role = m.role
-        if role in ("user", "assistant"):
-            res.append({"content": m.content or "", "role": role})
-    return res
-
-
 def call_llm(
     messages: list[ChatMessage],
-    tools: list[Callable] | None = None,
+    tools: list[Callable],
 ) -> ModelResponse:
     """Route LLM chat requests dynamically to the active backend."""
     settings = get_settings()
@@ -69,7 +59,6 @@ def call_llm(
         case "claude":
             if not settings.anthropic_api_key:
                 raise ValueError("Anthropic API key is not configured.")
-
             client = anthropic.Anthropic(
                 api_key=settings.anthropic_api_key.get_secret_value()
             )
@@ -79,6 +68,7 @@ def call_llm(
                 max_tokens=4096,
                 system=SYSTEM_PROMPT,
                 messages=to_anthropic(messages),
+                tools=to_anthropic_tools(tools),
                 output_config={"effort": "medium"},
                 cache_control={"type": "ephemeral"},
             )
@@ -95,10 +85,20 @@ def call_llm(
                 if block.type == "text":
                     text_content += block.text
 
+            parsed_tools: list[ToolCall] = [
+                ToolCall(
+                    id=block.id,
+                    function=ToolCallFunction(
+                        name=block.name,
+                        arguments=block.input,
+                    ),
+                )
+                for block in resp.content
+                if block.type == "tool_use"
+            ]
             return ModelResponse(
                 message=ChatMessage(
-                    role="assistant",
-                    content=text_content,
+                    role="assistant", content=text_content, tool_calls=parsed_tools
                 ),
                 raw_response=resp,
             )
