@@ -9,14 +9,14 @@ maintainers = [
   { name = "Adrian Just", email = "iamadyoo@gmail.com" },
 ]
 dependencies = [
-  "anthropic>=1.0.0",
+  "anthropic>=1.4.0",
   "faster-whisper>=1.2.1",
   "loguru>=0.7.3",
   "numpy>=2.5.2",
   "ollama>=0.6.2",
-  "piper-tts>=1.7.0",
+  "piper-tts>=1.8.0",
   "prompt-toolkit>=3.0.53",
-  "pydantic>=2.13.4",
+  "pydantic>=2.13.5",
   "pydantic-settings>=2.15.0",
   "realtimestt[faster-whisper,porcupine]>=1.0.4",
   "silero-vad>=6.2.1",
@@ -29,14 +29,14 @@ jarvis = "jarvis.__main__:main"
 [dependency-groups]
 lint = [
   "ruff>=0.16.3",
-  "ty>=0.0.72",
+  "ty>=0.0.75",
 ]
 test = [
   "pytest>=9.1.1",
 ]
 
 [build-system]
-requires = ["uv_build>=0.12.5,<0.13.0"]
+requires = ["uv_build>=0.12.7,<0.13.0"]
 build-backend = "uv_build"
 
 [tool.ruff]
