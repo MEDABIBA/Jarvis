@@ -11,6 +11,7 @@ class AppState:
     """Thread-safe runtime state management."""
 
     active_model: str = "local"
+    support_tools: bool = True
     tts_enabled: bool = True
     stt_enabled: bool = True
     _lock: Lock = field(default_factory=Lock, init=False, repr=False)

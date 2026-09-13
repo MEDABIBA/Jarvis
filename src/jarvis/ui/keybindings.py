@@ -11,6 +11,7 @@ def make_bindings(recorder: AudioToTextRecorder) -> KeyBindings:
     @bindings.add("f1")
     def _switch_model(event) -> None:
         new_model = state.cycle_model()
+        state.support_tools = True
         print(f"\n[F1] Backend model changed to: {new_model}")
 
     @bindings.add("f2")
