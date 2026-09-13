@@ -18,9 +18,9 @@ _POLISH_RE = re.compile(r"[ąćęłńóśźż]", re.IGNORECASE)
 _CYRILLIC_RE = re.compile(r"[а-я]", re.IGNORECASE)
 
 VOICE_CONFIG: dict[Language, str] = {
-    "en": "EN/en_GB-alan-medium.onnx",
-    "ru": "RU/ru_RU-denis-medium.onnx",
-    "pl": "PL/pl_PL-bass-high.onnx",
+    "en": "EN/en_GB-northern_english_male-medium.onnx",
+    "ru": "RU/ru_RU-ruslan-medium.onnx",
+    "pl": "PL/pl_PL-mc_speech-medium.onnx",
 }
 
 

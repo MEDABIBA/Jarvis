@@ -69,9 +69,9 @@ Incoming text responses are analyzed for character scripts before selecting the 
 ```mermaid
 flowchart LR
 TEXT[Input Text String] --> REGEX{Language Detection Regex}
-REGEX -->|Contains Polish Glyphs| PL[Select Polish Voice: pl_PL-bass-high]
-REGEX -->|Contains Cyrillic Glyphs| RU[Select Russian Voice: ru_RU-denis-medium]
-REGEX -->|Default / Latin Glyphs| EN[Select English Voice: en_GB-alan-medium]
+REGEX -->|Contains Polish Glyphs| PL[Select Polish Voice]
+REGEX -->|Contains Cyrillic Glyphs| RU[Select Russian Voice]
+REGEX -->|Default / Latin Glyphs| EN[Select English Voice]
 
     PL --> CACHE[Load / Fetch Cached ONNX Model]
     RU --> CACHE

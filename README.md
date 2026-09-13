@@ -38,22 +38,7 @@ cd jarvis
 uv sync
 ```
 
-### 2. Voice Model Assets
-
-Download the required Piper TTS voice models into the local storage structure:
-
-```bash
-# English (Alan - Medium)
-python -m piper.download_voices en_GB-alan-medium --download-dir voices/EN
-
-# Polish (Bass - High)
-python -m piper.download_voices pl_PL-bass-high --download-dir voices/PL
-
-# Russian (Denis - Medium)
-python -m piper.download_voices ru_RU-denis-medium --download-dir voices/RU
-```
-
-### 3. Local Model Deployment (Ollama)
+### 2. Local Model Deployment (Ollama)
 
 If utilizing local inference, install and launch the desired model via Ollama:
 
@@ -61,7 +46,7 @@ If utilizing local inference, install and launch the desired model via Ollama:
 ollama pull mistral
 ```
 
-### 4. Configuration
+### 3. Configuration
 
 Create a `.env` configuration file in the project root:
 
