@@ -68,7 +68,6 @@ def main() -> None:
         while True:
             try:
                 text = task_queue.get()
-                logger.info("Called")
             except q.Empty:
                 continue
 
