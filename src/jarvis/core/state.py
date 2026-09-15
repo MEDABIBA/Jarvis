@@ -12,7 +12,7 @@ class AppState:
 
     active_model: str = "local"
     support_tools: bool = True
-    tts_enabled: bool = True
+    tts_enabled: bool = False
     stt_enabled: bool = True
     _lock: Lock = field(default_factory=Lock, init=False, repr=False)
 
