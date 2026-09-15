@@ -51,7 +51,13 @@ def main() -> None:
 
     settings.sandbox.mkdir(parents=True, exist_ok=True)
     logger.info(
-        "Starting Jarvis v{} [Sandbox: {}]", __version__, settings.sandbox.resolve()
+        "Starting Jarvis v{}", __version__
+    )
+    logger.info(
+        "[Sandbox: {}]", settings.sandbox.resolve()
+    )
+    logger.info(
+        "Local model: {}", settings.local_model
     )
 
     recorder = get_recorder()
