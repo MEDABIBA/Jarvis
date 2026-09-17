@@ -76,6 +76,9 @@ def call_llm(
                     cache_control={"type": "ephemeral"},
                 )
 
+                if resp.stop_reason == "max_tokens":
+                    logger.warning("Response faced max_tokens limit; raise the limit")
+
                 logger.debug(
                     "tokens: fresh={} write={} read={} out={}",
                     resp.usage.input_tokens,
