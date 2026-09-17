@@ -13,7 +13,7 @@ from jarvis.core.logging import setup_logging
 from jarvis.core.state import state
 from jarvis.engine import AssistantEngine
 from jarvis.speech.stt import get_recorder
-from jarvis.speech.tts import is_speaking, speak
+from jarvis.speech.tts import is_speaking, speak, get_voice, VOICE_CONFIG
 from jarvis.ui.keybindings import make_bindings
 
 task_queue: q.Queue[str] = q.Queue()
@@ -66,6 +66,11 @@ def main() -> None:
 
     threading.Thread(target=input_loop, args=[session], daemon=True).start()
     threading.Thread(target=voice_loop, args=[recorder], daemon=True).start()
+
+    #Warm up voices
+    for voice in VOICE_CONFIG.keys():
+        threading.Thread(target=get_voice, args=[voice], daemon=True).start()
+
 
     print("\nJarvis is ready! Speak ('jarvis ...') or type commands below.")
     print("Hotkeys: F1 (Switch Model) | F2 (Toggle Mic) | F3 (Toggle Speech)\n")
