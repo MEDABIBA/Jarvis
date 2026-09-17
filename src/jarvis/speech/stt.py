@@ -21,8 +21,8 @@ def get_recorder() -> AudioToTextRecorder:
     """Initialize the continuous speech recognition and wake word engine."""
     logger.info("Initializing RealtimeSTT recorder with wake word 'jarvis'...")
     return AudioToTextRecorder(
-        model="small",
-        device="cpu",
+        model="tiny",
+        device="cuda",
         compute_type="int8",
         batch_size=1,
         wake_words="jarvis",
