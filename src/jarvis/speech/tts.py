@@ -17,6 +17,10 @@ is_speaking = Event()
 _POLISH_RE = re.compile(r"[ąćęłńóśźż]", re.IGNORECASE)
 _CYRILLIC_RE = re.compile(r"[а-я]", re.IGNORECASE)
 
+_ALLOWED = ".,!?;:-'"
+
+_CODE_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
+
 VOICE_CONFIG: dict[Language, str] = {
     "en": "EN/en_GB-northern_english_male-medium.onnx",
     "ru": "RU/ru_RU-ruslan-medium.onnx",
@@ -31,6 +35,27 @@ def detect_language(text: str) -> Language:
     if _CYRILLIC_RE.search(text):
         return "ru"
     return "en"
+
+
+import re
+
+
+
+
+def to_speech(text: str) -> str: # Needs improvement: filter big numbers, links, mails, ip adressess, etc.
+    """Strip code blocks and unpronounceable symbols from an assistant reply."""
+    text = _CODE_FENCE_RE.sub(" ", text)
+    if text.count("```") % 2:
+        text = text.split("```")[0]
+
+    text = text.replace("_", " ")
+
+    res: list[str] = []
+    for el in text:
+        if el.isalnum() or el.isspace() or el in _ALLOWED:
+            res.append(el)
+
+    return " ".join("".join(res).split())
 
 
 @cache
@@ -52,14 +77,15 @@ def get_voice(lang: Language) -> PiperVoice:
 
 def speak(text: str) -> None:
     """Synthesize text and play audio synchronously via sounddevice."""
-    if not text.strip():
+    parsed_text = to_speech(text)
+    if not parsed_text.strip():
         return
 
     is_speaking.set()
     try:
-        lang = detect_language(text)
+        lang = detect_language(parsed_text)
         voice = get_voice(lang)
-        chunks = list(voice.synthesize(text))
+        chunks = list(voice.synthesize(parsed_text))
         if not chunks:
             return
 
