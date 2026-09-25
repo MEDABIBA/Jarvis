@@ -31,14 +31,14 @@ jarvis = "jarvis.__main__:main"
 [dependency-groups]
 lint = [
   "ruff>=0.16.3",
-  "ty>=0.0.75",
+  "ty>=0.0.82",
 ]
 test = [
   "pytest>=9.1.1",
 ]
 
 [build-system]
-requires = ["uv_build>=0.12.7,<0.13.0"]
+requires = ["uv_build>=0.12.17,<0.13.0"]
 build-backend = "uv_build"
 
 [tool.ruff]
