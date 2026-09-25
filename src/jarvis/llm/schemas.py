@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -25,3 +25,9 @@ class ChatMessage(BaseModel):
 class ModelResponse(BaseModel):
     message: ChatMessage
     raw_response: Any = None
+
+
+class Tool(Protocol):
+    __name__: str
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...

@@ -1,5 +1,3 @@
-from collections.abc import Callable
-
 import anthropic
 import ollama
 from loguru import logger
@@ -8,12 +6,18 @@ from jarvis.core.config import get_settings
 from jarvis.core.state import state
 from jarvis.llm.adapters import to_anthropic, to_anthropic_tools
 from jarvis.llm.prompts import SYSTEM_PROMPT
-from jarvis.llm.schemas import ChatMessage, ModelResponse, ToolCall, ToolCallFunction
+from jarvis.llm.schemas import (
+    ChatMessage,
+    ModelResponse,
+    Tool,
+    ToolCall,
+    ToolCallFunction,
+)
 
 
 def call_llm(
     messages: list[ChatMessage],
-    tools: list[Callable],
+    tools: list[Tool],
 ) -> ModelResponse:
     """Route LLM chat requests dynamically to the active backend."""
     settings = get_settings()
@@ -29,13 +33,11 @@ def call_llm(
                     for m in messages
                     if m.content is not None
                 ]
-                params = {
-                    "model":settings.local_model,
-                    "messages":raw_msgs
-                }
-                if state.support_tools:
-                    params["tools"] = tools
-                response = ollama.chat(**params)
+                response = ollama.chat(
+                    model=settings.local_model,
+                    messages=raw_msgs,
+                    tools=tools if state.support_tools else None,
+                )
 
                 msg_dict = response.message
                 tool_calls_parsed = None

@@ -1,11 +1,10 @@
 import inspect
-from collections.abc import Callable
 
 from anthropic.types import ToolParam
 from anthropic.types.content_block_param import ContentBlockParam
 from anthropic.types.message_param import MessageParam
 
-from jarvis.llm.schemas import ChatMessage
+from jarvis.llm.schemas import ChatMessage, Tool
 
 TYPE_MAP = {
     str: "string",
@@ -52,7 +51,7 @@ def to_anthropic(messages: list[ChatMessage]) -> list[MessageParam]:
     return res
 
 
-def to_anthropic_tools(tools: list[Callable]) -> list[ToolParam]:
+def to_anthropic_tools(tools: list[Tool]) -> list[ToolParam]:
     """Convert python tools to Anthropic tool specs"""
     specs: list[ToolParam] = []
     for tool in tools:

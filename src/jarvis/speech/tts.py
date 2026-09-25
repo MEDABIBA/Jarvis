@@ -15,8 +15,7 @@ Language = Literal["en", "ru", "pl"]
 is_speaking = Event()
 
 _POLISH_RE = re.compile(r"[ąćęłńóśźż]", re.IGNORECASE)
-_CYRILLIC_RE = re.compile(r"[а-я]", re.IGNORECASE)
-
+_CYRILLIC_RE = re.compile(r"[а-я]", re.IGNORECASE)  # ruff: ignore[RUF001]
 _ALLOWED = ".,!?;:-'"
 
 _CODE_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
@@ -37,12 +36,9 @@ def detect_language(text: str) -> Language:
     return "en"
 
 
-import re
-
-
-
-
-def to_speech(text: str) -> str: # Needs improvement: filter big numbers, links, mails, ip adressess, etc.
+def to_speech(
+    text: str,
+) -> str:  # Needs improvement: filter big numbers, links, mails, ip adressess, etc.
     """Strip code blocks and unpronounceable symbols from an assistant reply."""
     text = _CODE_FENCE_RE.sub(" ", text)
     if text.count("```") % 2:

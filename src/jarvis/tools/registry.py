@@ -1,5 +1,4 @@
-from collections.abc import Callable
-
+from jarvis.llm.schemas import Tool
 from jarvis.tools.fs import (
     create_directory,
     create_file,
@@ -11,7 +10,7 @@ from jarvis.tools.fs import (
     read_file,
 )
 
-AVAILABLE_TOOLS: list[Callable] = [
+AVAILABLE_TOOLS: list[Tool] = [
     get_time,
     find_file,
     read_file,
@@ -22,4 +21,4 @@ AVAILABLE_TOOLS: list[Callable] = [
     create_directory,
 ]
 
-TOOL_REGISTRY: dict[str, Callable] = {fn.__name__: fn for fn in AVAILABLE_TOOLS}
+TOOL_REGISTRY: dict[str, Tool] = {fn.__name__: fn for fn in AVAILABLE_TOOLS}
