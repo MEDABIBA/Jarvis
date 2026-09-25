@@ -4,9 +4,7 @@
 
 ## CI/CD
 
-- **Add prettier config**
-
-- **Add types and lint checker on main branch & pull requests**
+- [x] **Add types and lint checker on main branch & pull requests**
 
 - **Write the first tests that cover jarvis running**
 
