@@ -21,7 +21,10 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
-
+      - name: Install PortAudio headers
+        run: |
+          sudo apt update
+          sudo apt-get install -y portaudio19-dev
       - name: Install the lint toolchain
         run: uv sync --frozen --no-default-groups --group lint
 
