@@ -1,0 +1,35 @@
+name: Types and lint checker on main branch & pull requests
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint and type check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install the lint toolchain
+        run: uv sync --frozen --no-default-groups --group lint
+
+      - name: Lint with ruff
+        run: uv run --frozen --no-default-groups --group lint ruff check --no-fix
+
+      - name: Check formatting with ruff
+        run: uv run --frozen --no-default-groups --group lint ruff format --check
+
+      - name: Check types with ty
+        run: uv run --frozen --no-default-groups --group lint ty check
