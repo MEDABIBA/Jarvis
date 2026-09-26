@@ -112,7 +112,7 @@ def call_llm(
                 )
 
             case _:
-                raise NotImplementedError(f"Backend '{backend}' is not yet supported.")
+                raise NotImplementedError(f"Backend '{backend}' is not yet supported, try to change the model")
     except Exception as e:
         if "does not support tools" in str(e):
             logger.warning("Model lacks tool support; retrying without tools")

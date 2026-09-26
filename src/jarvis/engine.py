@@ -22,8 +22,10 @@ class AssistantEngine:
         iterations = 0
         while iterations < self.max_tool_iterations:
             iterations += 1
-            response = call_llm(self.history, AVAILABLE_TOOLS)
-            msg = response.message
+            try:
+                msg = call_llm(self.history, AVAILABLE_TOOLS).message
+            except Exception as e:
+                return f"Backend error: {e}"
             self.history.append(msg)
 
             if not msg.tool_calls:
