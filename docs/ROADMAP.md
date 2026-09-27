@@ -10,11 +10,11 @@
 
 ## Core runtime
 
-- **Behavior in case of failures**
+- [x] **Behavior in case of failures**
 
   > Ollama is not running, no network connection, tool threw an exception
 
-- **Replace per-provider branches with an OpenAI-compatible protocol**
+- [x] **Replace per-provider branches with an OpenAI-compatible protocol**
 
   > One branch with a configurable base_url in `call_llm()` instead of a case per provider
 
