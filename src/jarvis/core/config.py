@@ -1,8 +1,10 @@
-from functools import cache
+from functools import cache, cached_property
 from pathlib import Path
 
 from pydantic import SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from jarvis.llm.schemas import Provider
 
 
 class AppSettings(BaseSettings):
@@ -31,16 +33,55 @@ class AppSettings(BaseSettings):
     )
 
     debug: bool = True
-    local_model: str
     sandbox: Path = Path("./sandbox")
     voices_dir: Path = Path("./voices")
-
-    anthropic_model: str = "claude-sonnet-5"
-    # gemini_model / gpt_model — Add with branches implementation
 
     anthropic_api_key: SecretStr | None = None
     gemini_api_key: SecretStr | None = None
     gpt_api_key: SecretStr | None = None
+    cerebras_api_key: SecretStr | None = None
+
+    local_model: SecretStr | None = None
+    anthropic_model: SecretStr | None = None
+    gemini_model: SecretStr | None = None
+    gpt_model: SecretStr | None = None
+    cerebras_model: SecretStr | None = None
+
+    @cached_property
+    def providers(self) -> dict[str, Provider]:
+        return {
+            "claude": Provider(
+                model=self.anthropic_model.get_secret_value()
+                if self.anthropic_model
+                else "",
+                protocol="anthropic",
+                api_key=self.anthropic_api_key,
+            ),
+            "gemini": Provider(
+                model=self.gemini_model.get_secret_value() if self.gemini_model else "",
+                protocol="openai",
+                api_key=self.gemini_api_key,
+                gateway_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+            ),
+            "gpt": Provider(
+                model=self.gpt_model.get_secret_value() if self.gpt_model else "",
+                protocol="openai",
+                api_key=self.gpt_api_key,
+                gateway_url="https://api.openai.com/v1",
+            ),
+            "cerebras": Provider(
+                model=self.cerebras_model.get_secret_value()
+                if self.cerebras_model
+                else "",
+                protocol="openai",
+                api_key=self.cerebras_api_key,
+                gateway_url="https://api.cerebras.ai/v1",
+            ),
+            "local": Provider(
+                model=self.local_model.get_secret_value() if self.local_model else "",
+                protocol="local",
+            ),
+        }
 
     skip_dirs: set[str] = {".venv", "__pycache__", ".git", "node_modules", ".vscode"}
 
@@ -58,17 +99,11 @@ class AppSettings(BaseSettings):
         """
         models: list[str] = ["local"]
 
-        key_mappings: dict[str, SecretStr | None] = {
-            "claude": self.anthropic_api_key,
-            "gemini": self.gemini_api_key,
-            "gpt": self.gpt_api_key,
-        }
-
-        for model_name, secret in key_mappings.items():
-            if secret is None:
+        for model_name, data in self.providers.items():
+            if data.api_key is None or not data.model:
                 continue
 
-            raw_val = secret.get_secret_value().strip()
+            raw_val = data.api_key.get_secret_value()
 
             if not raw_val or "api-key" in raw_val.lower():
                 continue

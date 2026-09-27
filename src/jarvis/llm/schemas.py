@@ -1,6 +1,6 @@
 from typing import Any, Literal, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 
 class ToolCallFunction(BaseModel):
@@ -31,3 +31,12 @@ class Tool(Protocol):
     __name__: str
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+
+
+class Provider(BaseModel):
+    """Connection details for one LLM backend."""
+
+    model: str
+    protocol: Literal["anthropic", "openai", "local"]
+    api_key: SecretStr | None = None
+    gateway_url: str | None = None

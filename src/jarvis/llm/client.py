@@ -1,10 +1,19 @@
+import json
+
 import anthropic
 import ollama
 from loguru import logger
+from openai import OpenAI, omit
+from openai.types.chat import ChatCompletion
 
 from jarvis.core.config import get_settings
 from jarvis.core.state import state
-from jarvis.llm.adapters import to_anthropic, to_anthropic_tools
+from jarvis.llm.adapters import (
+    to_anthropic,
+    to_anthropic_tools,
+    to_openai,
+    to_openai_tools,
+)
 from jarvis.llm.prompts import SYSTEM_PROMPT
 from jarvis.llm.schemas import (
     ChatMessage,
@@ -34,7 +43,7 @@ def call_llm(
                     if m.content is not None
                 ]
                 response = ollama.chat(
-                    model=settings.local_model,
+                    model=settings.providers["local"].model,
                     messages=raw_msgs,
                     tools=tools if state.support_tools else None,
                 )
@@ -62,14 +71,14 @@ def call_llm(
                 )
 
             case "claude":
-                if not settings.anthropic_api_key:
+                if not settings.providers["claude"].api_key:
                     raise ValueError("Anthropic API key is not configured.")
                 client = anthropic.Anthropic(
-                    api_key=settings.anthropic_api_key.get_secret_value()
+                    api_key=settings.providers["claude"].api_key.get_secret_value()
                 )
 
                 resp = client.messages.create(
-                    model=settings.anthropic_model,
+                    model=settings.providers["claude"].model,
                     max_tokens=4096,
                     system=SYSTEM_PROMPT,
                     messages=to_anthropic(messages),
@@ -111,8 +120,49 @@ def call_llm(
                     raw_response=resp,
                 )
 
+            case x if x in settings.providers:
+                provider = settings.providers[x]
+                if provider.api_key is None:
+                    raise ValueError(f"API key for '{x}' is not configured.")
+
+                client = OpenAI(
+                    api_key=provider.api_key.get_secret_value()
+                    if provider.api_key
+                    else None,
+                    base_url=provider.gateway_url,
+                )
+
+                res: ChatCompletion = client.chat.completions.create(
+                    model=settings.providers[x].model,
+                    messages=to_openai(messages),
+                    tools=to_openai_tools(tools) if state.support_tools else omit,
+                )
+                message = res.choices[0].message
+
+                tool_calls_parsed = [
+                    ToolCall(
+                        function=ToolCallFunction(
+                            name=call.function.name,
+                            arguments=json.loads(call.function.arguments or "{}"),
+                        )
+                    )
+                    for call in message.tool_calls or []
+                    if call.type == "function"
+                ]
+
+                return ModelResponse(
+                    message=ChatMessage(
+                        role="assistant",
+                        content=message.content,
+                        tool_calls=tool_calls_parsed,
+                    ),
+                    raw_response=res,
+                )
+
             case _:
-                raise NotImplementedError(f"Backend '{backend}' is not yet supported, try to change the model")
+                raise NotImplementedError(
+                    f"Backend '{backend}' is not yet supported, try to change the model"
+                )
     except Exception as e:
         if "does not support tools" in str(e):
             logger.warning("Model lacks tool support; retrying without tools")
