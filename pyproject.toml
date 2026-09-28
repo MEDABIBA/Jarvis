@@ -9,7 +9,7 @@ maintainers = [
   { name = "Adrian Just", email = "iamadyoo@gmail.com" },
 ]
 dependencies = [
-  "anthropic>=1.7.0",
+  "anthropic>=1.8.0",
   "faster-whisper>=1.2.1",
   "loguru>=0.7.3",
   "numpy>=2.5.3",
@@ -22,7 +22,7 @@ dependencies = [
   "pydantic>=2.13.5",
   "pydantic-settings>=2.15.0",
   "realtimestt[faster-whisper,porcupine]>=1.0.4",
-  "silero-vad>=6.2.1",
+  "silero-vad>=6.2.3",
   "sounddevice>=0.5.6",
 ]
 
