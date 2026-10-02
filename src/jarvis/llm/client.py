@@ -141,6 +141,7 @@ def call_llm(
 
                 tool_calls_parsed = [
                     ToolCall(
+                        id=call.id,
                         function=ToolCallFunction(
                             name=call.function.name,
                             arguments=json.loads(call.function.arguments or "{}"),
