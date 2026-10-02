@@ -112,6 +112,8 @@ def to_openai(messages: list[ChatMessage]) -> list[ChatCompletionMessageParam]:
             res.append({"role": role, "content": m.content})
         elif role == "user":
             res.append({"role": role, "content": m.content or ""})
+        elif role == "system":
+            res.append({"role": role, "content": m.content or ""})
         elif role == "tool":
             res.append(
                 {
