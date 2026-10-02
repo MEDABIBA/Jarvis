@@ -1,4 +1,5 @@
 import os
+import secrets
 from datetime import datetime
 from pathlib import Path
 
@@ -221,3 +222,87 @@ def create_directory(path: str) -> str:
         return str(err)
     except OSError as err:
         return f"OS error creating directory: {err}"
+
+
+# memory
+
+MEMORY_DIR = Path(__file__).parents[3] / "memory"
+
+
+def remember(chat_memory: str = "", user_profile: str = "") -> str:
+    """Save a fact to your memory.
+
+    Call whis when user ask to remember something, or tell you important info about him to write a brief history of the chat
+
+    Args:
+        chat_memory: One or two sentances on what matters from conversation so far. Empty string, if there is nothing worth storing, or this info will be stored in user_profile arguments.
+        user_profile: One or two sentances about the user themselves - their name, preferences, habits, long-lived facts. Empty string, if there is nothing worth storing, or this info will be stored in chat_memory arguments."""
+
+    if not chat_memory.strip() and not user_profile.strip():
+        return "Nothing saved: both arguments were empty"
+
+    MEMORY_FILES = ((chat_memory, "MEMORY.md"), (user_profile, "USER.md"))
+
+    data = str(datetime.now())[0:-7]
+    written: list[str] = []
+    failed: list[str] = []
+    for text, filename in MEMORY_FILES:
+        if not text.strip():
+            continue
+        try:
+            with open(f"{MEMORY_DIR}/{filename}", "a", encoding="utf-8") as f:
+                entry_id = secrets.token_hex(2)
+                f.write(f"- [{entry_id}] {data} {text.strip()}\n")
+            written.append(filename)
+        except OSError as err:
+            logger.error("Could not write memory file {}: {}", filename, err)
+            failed.append(filename)
+
+    if not written:
+        return f"Failed to save files: {', '.join(failed)}"
+    result = f"Saved to {', '.join(written)}."
+    if failed:
+        result += f" Failed to save: {', '.join(failed)}."
+    return result
+
+
+def forget(entry_ids: str):
+    """Remove deprecated information from the memory files by their id
+
+    Call this when a stored fact is no longer true, when user asks you to forget something, or when you notice a duplicate.
+    The entries and their ids are already shown to you in the <chat_memory> and
+    <user_profile> blocks of your system prompt. Read the ids from there
+
+    Args:
+        entry_ids: One or more ids, comma separated
+        Example: "a3f1, 7b02"."""
+
+    id_list = [i.strip() for i in entry_ids.split(",")]
+    removed = []
+    if not id_list:
+        return "There's nothing to delete, entry_ids argument was empty"
+    for filename in ("MEMORY.md", "USER.md"):
+        try:
+            with open(f"{MEMORY_DIR}/{filename}", encoding="utf-8") as f:
+                lines = f.readlines()
+            kept = []
+            for line in lines:
+                hax = line[3:7].strip()
+                if hax in id_list:
+                    removed.append(hax)
+                else:
+                    kept.append(line)
+            if len(kept) == len(lines):
+                continue
+            with open(f"{MEMORY_DIR}/{filename}", "w", encoding="utf-8") as f:
+                f.writelines(kept)
+        except OSError as err:
+            logger.error("Could not edit memory file {}: {}", filename, err)
+
+    missing = [i for i in id_list if i not in removed]
+    if not removed:
+        return f"No entry matched ids {', '.join(missing)}"
+    result = f"Lines with ids {', '.join(removed)} were successfully removed"
+    if missing:
+        result += f". Not found: {', '.join(missing)}"
+    return result

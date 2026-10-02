@@ -18,11 +18,11 @@
 
   > One branch with a configurable base_url in `call_llm()` instead of a case per provider
 
-- **Create `MEMORY.md` and `USER.md`**
+- [x] **Create `MEMORY.md` and `USER.md`**
 
   > Two files holding a brief summary of the chat and of the user
 
-- **Add `remember()` and `forget()` tools**
+- [x] **Add `remember()` and `forget()` tools**
 
   > Tools that write and remove notes in `MEMORY.md` and `USER.md`
 

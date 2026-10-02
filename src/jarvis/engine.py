@@ -1,7 +1,9 @@
+import math
+
 from loguru import logger
 
 from jarvis.llm.client import call_llm
-from jarvis.llm.prompts import SYSTEM_PROMPT
+from jarvis.llm.prompts import MEMORY_DIR, MEMORY_FILES, generate_dynamic_prompt
 from jarvis.llm.schemas import ChatMessage
 from jarvis.tools.registry import AVAILABLE_TOOLS, TOOL_REGISTRY
 
@@ -11,13 +13,36 @@ class AssistantEngine:
 
     def __init__(self, max_tool_iterations: int = 8) -> None:
         self.history: list[ChatMessage] = [
-            ChatMessage(role="system", content=SYSTEM_PROMPT)
+            ChatMessage(role="system", content=generate_dynamic_prompt())
         ]
+        self.memory_timestamp = self.read_memory_timestamp()
         self.max_tool_iterations = max_tool_iterations
+
+    def read_memory_timestamp(self):
+        timestamp: int = 0
+        for _, filename in MEMORY_FILES:
+            try:
+                timestamp += math.floor((MEMORY_DIR / filename).stat().st_mtime)
+            except FileNotFoundError:
+                logger.debug("Memory file {} not present; skipping", filename)
+        return timestamp
+
+    def _memory_changed(self) -> bool:
+        current = self.read_memory_timestamp()
+        if current == self.memory_timestamp:
+            return False
+        self.memory_timestamp = current
+        return True
 
     def handle(self, user_text: str) -> str:
         """Process user input through the LLM and tool execution pipeline."""
         self.history.append(ChatMessage(role="user", content=user_text))
+
+        if self._memory_changed():
+            # Memory files changed - rebuild the old system prompt into the new one
+            self.history[0] = ChatMessage(
+                role="system", content=generate_dynamic_prompt()
+            )
 
         iterations = 0
         while iterations < self.max_tool_iterations:

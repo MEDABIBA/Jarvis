@@ -14,7 +14,7 @@ from jarvis.llm.adapters import (
     to_openai,
     to_openai_tools,
 )
-from jarvis.llm.prompts import SYSTEM_PROMPT
+from jarvis.llm.prompts import generate_dynamic_prompt
 from jarvis.llm.schemas import (
     ChatMessage,
     ModelResponse,
@@ -80,7 +80,7 @@ def call_llm(
                 resp = client.messages.create(
                     model=settings.providers["claude"].model,
                     max_tokens=4096,
-                    system=SYSTEM_PROMPT,
+                    system=generate_dynamic_prompt(),
                     messages=to_anthropic(messages),
                     tools=to_anthropic_tools(tools),
                     output_config={"effort": "medium"},
@@ -145,7 +145,7 @@ def call_llm(
                         function=ToolCallFunction(
                             name=call.function.name,
                             arguments=json.loads(call.function.arguments or "{}"),
-                        )
+                        ),
                     )
                     for call in message.tool_calls or []
                     if call.type == "function"

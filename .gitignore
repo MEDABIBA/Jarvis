@@ -192,5 +192,6 @@ pyrightconfig.json
 logs/
 
 sandbox/
+memory/
 
 # End of https://www.toptal.com/developers/gitignore/api/python,linux
