@@ -2,8 +2,14 @@ import math
 
 from loguru import logger
 
+from jarvis.core.state import state
 from jarvis.llm.client import call_llm
-from jarvis.llm.prompts import MEMORY_DIR, MEMORY_FILES, generate_dynamic_prompt
+from jarvis.llm.prompts import (
+    MEMORY_DIR,
+    MEMORY_FILES,
+    SUMMARY_PROMPT,
+    generate_dynamic_prompt,
+)
 from jarvis.llm.schemas import ChatMessage
 from jarvis.tools.registry import AVAILABLE_TOOLS, TOOL_REGISTRY
 
@@ -17,6 +23,8 @@ class AssistantEngine:
         ]
         self.memory_timestamp = self.read_memory_timestamp()
         self.max_tool_iterations = max_tool_iterations
+        self.max_tokens_per_history = 6000
+        self.max_tokens_per_history_local_model = 2000
 
     def read_memory_timestamp(self):
         timestamp: int = 0
@@ -34,16 +42,72 @@ class AssistantEngine:
         self.memory_timestamp = current
         return True
 
+    def _estimate_tokens(self):
+        chars = sum([len(i.content or "") for i in self.history])
+        chars += sum(
+            len((str(tc.function.arguments)) + str(len(tc.function.name)))
+            for m in self.history
+            for tc in m.tool_calls or []
+        )
+        return chars // 3  # ~3 characters per token;
+
+    def _cut_index(self, keep: int = 3) -> int:
+        """Boundary that keeps roughly `keep` last messages without splitting a
+        tool call from its results."""
+        idx = max(1, len(self.history) - keep)
+        while idx > 1 and self.history[idx].role == "tool":
+            idx -= 1
+        return idx
+
+    def _compact(self) -> None:
+        idx = self._cut_index(keep=3)
+        head, tail = self.history[1:idx], self.history[idx:]
+
+        transcript = "\n".join(
+            f"{m.role}: {m.content}" if m.content else f"{m.role}: [tool_calls]"
+            for m in head
+        )
+        try:
+            summary = call_llm(
+                [
+                    ChatMessage(role="user", content=transcript),
+                    ChatMessage(role="user", content=SUMMARY_PROMPT),
+                ],
+                [],
+            ).message.content
+        except Exception as err:
+            logger.error("Compaction failed, keeping the history as is: {}", err)
+            return
+        if not summary:
+            logger.warning("Compaction returned nothing, keeping the history as is")
+            return
+
+        self.history = [
+            self.history[0],
+            ChatMessage(
+                role="user",
+                content=f"<conversation_summary>\n{summary}\n</conversation_summary>",
+            ),
+            *tail,
+        ]
+
     def handle(self, user_text: str) -> str:
         """Process user input through the LLM and tool execution pipeline."""
-        self.history.append(ChatMessage(role="user", content=user_text))
 
         if self._memory_changed():
             # Memory files changed - rebuild the old system prompt into the new one
             self.history[0] = ChatMessage(
                 role="system", content=generate_dynamic_prompt()
             )
+        limit = (
+            self.max_tokens_per_history_local_model
+            if state.active_model == "local"
+            else self.max_tokens_per_history
+        )
+        if self._estimate_tokens() > limit:
+            self._compact()
 
+        self.history.append(ChatMessage(role="user", content=user_text))
         iterations = 0
         while iterations < self.max_tool_iterations:
             iterations += 1

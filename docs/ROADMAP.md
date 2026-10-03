@@ -26,7 +26,7 @@
 
   > Tools that write and remove notes in `MEMORY.md` and `USER.md`
 
-- **Write compacted history after every _n_ prompts**
+- [x] **Write compacted history after every _n_ prompts**
 
 - **Store all conversations in a SQLite FTS5 database**
 

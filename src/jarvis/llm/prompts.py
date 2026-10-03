@@ -16,6 +16,23 @@ Guidelines:
 5. You operate strictly inside the configured sandbox root.
 """
 
+SUMMARY_PROMPT = """You compress the earlier part of a conversation between a user
+and Jarvis, a voice assistant with file system access, so that it can be dropped
+from the context without losing what matters.
+
+Keep: decisions the user made, facts about the user, file and directory names that
+were touched, what was changed and what the result was, and any request that is
+still unfinished.
+
+Drop: greetings and small talk, the contents of files that were read, the mechanics
+of which tool was called, and anything already superseded by a later message.
+
+The transcript may already start with a <conversation_summary> block from an earlier
+compaction — merge it with the newer material instead of repeating it separately.
+
+Write compact third-person bullets, at most 150 words. Output only the summary, with
+no preamble and no closing remark."""
+
 
 def generate_dynamic_prompt():
     """Compose the session system prompt from static rules plus memory files"""
