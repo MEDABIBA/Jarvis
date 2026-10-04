@@ -8,6 +8,8 @@ from loguru import logger
 from jarvis.core.config import get_settings
 from jarvis.tools.path import safe_path
 
+MAX_TOOL_OUTPUT = 2000
+
 
 def get_time() -> str:
     """Get the current local date and time with timezone information.
@@ -51,16 +53,25 @@ def find_file(file_name: str) -> str:
     return "\n".join(matches)
 
 
-def read_file(path: str) -> str:
-    """Read the full text content of a file inside the sandbox.
+def read_file(path: str, from_line: int = 0) -> str:
+    """Read the content of a file inside the sandbox.
 
     Call this only when you already have a path — normally one returned by
     find_file. If you only know part of the name, call find_file first.
 
+    Long files are cut off. When the result ends with a truncation notice,
+    call this again with `from_line` set to the line it names - but only
+    if you actually need the rest.
+
+
     Args:
         path: Path relative to the sandbox root, as returned by find_file.
             Example: "notes/todo.txt".
+        from_line: Line to start reading from, counting from 0. Defaults to
+            the start of the file. Example: 120.
     """
+    res = []
+    size = 0
     try:
         target = safe_path(path)
         if not target.exists():
@@ -68,7 +79,19 @@ def read_file(path: str) -> str:
         if not target.is_file():
             return f"Error: '{path}' is a directory, not a file."
 
-        return target.read_text(encoding="utf-8", errors="replace")
+        list_lines = target.open(encoding="utf-8", errors="replace").readlines()
+        if from_line >= len(list_lines):
+            return f"Error: from_line {from_line} is past the end of '{path}' ({len(list_lines)} lines)."
+        for i, line in enumerate(list_lines[from_line:], start=from_line):
+            if size >= MAX_TOOL_OUTPUT:
+                res.append(
+                    f"[truncated at line {i} of {len(list_lines)}; "
+                    f"call read_file again with from_line={i}]"
+                )
+                break
+            res.append(line)
+            size += len(line)
+        return "".join(res)
     except ValueError as err:
         return str(err)
     except OSError as err:
