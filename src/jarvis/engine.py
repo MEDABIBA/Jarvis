@@ -1,3 +1,4 @@
+
 import math
 
 from loguru import logger
@@ -91,6 +92,13 @@ class AssistantEngine:
             *tail,
         ]
 
+    def _reduce_tool_results(self, keep: int = 6, max_len: int = 200):
+        """Drop unused tool result, that are no longer recent, to reduce space taken up by the history"""
+        for m in self.history[:-keep]:
+            if m.role == "tool" and m.content and len(m.content) > max_len:
+                m.content = f"{m.content[:max_len]}... [{len(m.content) - max_len} chars dropped from history]"
+        return self.history
+
     def handle(self, user_text: str) -> str:
         """Process user input through the LLM and tool execution pipeline."""
 
@@ -99,6 +107,9 @@ class AssistantEngine:
             self.history[0] = ChatMessage(
                 role="system", content=generate_dynamic_prompt()
             )
+
+        self._reduce_tool_results()
+
         limit = (
             self.max_tokens_per_history_local_model
             if state.active_model == "local"

@@ -3,6 +3,7 @@ import json
 import anthropic
 import ollama
 from loguru import logger
+from ollama import Message
 from openai import OpenAI, omit
 from openai.types.chat import ChatCompletion
 
@@ -37,8 +38,8 @@ def call_llm(
     try:
         match backend:
             case "local":
-                raw_msgs = [
-                    {"role": m.role, "content": m.content or ""}
+                raw_msgs: list[Message] = [
+                    Message(role=m.role, content=m.content or "")
                     for m in messages
                     if m.content is not None
                 ]
