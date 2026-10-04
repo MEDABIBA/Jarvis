@@ -1,4 +1,3 @@
-
 import math
 
 from loguru import logger
@@ -61,6 +60,10 @@ class AssistantEngine:
         return idx
 
     def _compact(self) -> None:
+        """Replace the older part of the history with a summary of it.
+
+        Called when the number of tokens exceeds the set limit (max_tokens_per_history_local_model or max_tokens_per_history).
+        Asks the model to compact the chat history into one <conversation_summary> message with the user role. The recent tail stays verbatim"""
         idx = self._cut_index(keep=3)
         head, tail = self.history[1:idx], self.history[idx:]
 
