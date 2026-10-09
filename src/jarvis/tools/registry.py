@@ -9,6 +9,7 @@ from jarvis.tools.fs import (
     get_time,
     list_dir,
     read_file,
+    read_from_database,
     remember,
 )
 
@@ -23,6 +24,7 @@ AVAILABLE_TOOLS: list[Tool] = [
     create_directory,
     remember,
     forget,
+    read_from_database,
 ]
 
 TOOL_REGISTRY: dict[str, Tool] = {fn.__name__: fn for fn in AVAILABLE_TOOLS}

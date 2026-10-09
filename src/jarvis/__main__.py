@@ -15,6 +15,7 @@ from jarvis.engine import AssistantEngine
 from jarvis.llm.schemas import SessionData
 from jarvis.speech.stt import get_recorder
 from jarvis.speech.tts import VOICE_CONFIG, get_voice, is_speaking, speak
+from jarvis.sql.history import get_database
 from jarvis.ui.keybindings import make_bindings
 
 task_queue: q.Queue[str] = q.Queue()
@@ -78,7 +79,7 @@ def main() -> None:
 
             print(f"\nUser: {text}")
             answer, id = engine.handle(text)
-            engine.database.push(SessionData(question=text, answer=answer, turn_id=id))
+            get_database().push(SessionData(question=text, answer=answer, turn_id=id))
             print(f"Jarvis: {answer}\n")
 
             if state.tts_enabled and answer:

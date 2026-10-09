@@ -1,9 +1,8 @@
 import sqlite3
+from functools import cache
 from pathlib import Path
 
 from jarvis.llm.schemas import SessionData
-
-path = Path(__file__).parents[3] / "memory" / "history.db"
 
 SCHEMA = """
     CREATE TABLE IF NOT EXISTS messages(
@@ -35,10 +34,10 @@ def quote_for_fts(text: str) -> str:
 
 class Database:
     def __init__(self):
-        self.con = sqlite3.connect(path)
-
-    def initialize(self) -> None:
-        """ "Create database if dont exist"""
+        self.path = Path(__file__).parents[3] / "memory" / "history.db"
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.con = sqlite3.connect(self.path)
+        self.con.row_factory = sqlite3.Row
         self.con.executescript(SCHEMA)
 
     def push(self, data: SessionData) -> None:
@@ -78,3 +77,9 @@ class Database:
 """,
             [match, limit],
         ).fetchall()
+
+
+@cache
+def get_database() -> Database:
+    """Open the history database once per process."""
+    return Database()

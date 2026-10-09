@@ -12,7 +12,6 @@ from jarvis.llm.prompts import (
     generate_dynamic_prompt,
 )
 from jarvis.llm.schemas import ChatMessage
-from jarvis.sql.history import Database
 from jarvis.tools.registry import AVAILABLE_TOOLS, TOOL_REGISTRY
 
 
@@ -29,9 +28,6 @@ class AssistantEngine:
         self.max_tool_iterations = max_tool_iterations
         self.max_tokens_per_history = 6000
         self.max_tokens_per_history_local_model = 2000
-        self.database = Database()
-
-        self.database.initialize()
 
     def read_memory_timestamp(self):
         timestamp: int = 0

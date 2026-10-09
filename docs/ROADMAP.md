@@ -28,7 +28,7 @@
 
 - [x] **Write compacted history after every _n_ prompts**
 
-- **Store all conversations in a SQLite FTS5 database**
+- [x] **Store all conversations in a SQLite FTS5 database**
 
   > Full history on disk, looked up through a `search_history()` tool
 

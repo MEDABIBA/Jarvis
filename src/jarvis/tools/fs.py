@@ -6,6 +6,7 @@ from pathlib import Path
 from loguru import logger
 
 from jarvis.core.config import get_settings
+from jarvis.sql.history import get_database
 from jarvis.tools.path import safe_path
 
 MAX_TOOL_OUTPUT = 2000
@@ -329,3 +330,19 @@ def forget(entry_ids: str):
     if missing:
         result += f". Not found: {', '.join(missing)}"
     return result
+
+
+def read_from_database(keywords: str, limit: int = 2) -> str:
+    """Search your past conversation with the user by keywords
+    Call it when the user refers to something from an earlier conversation that is no longer in your context.
+    Do NOT call this to save a new fact that is what `remember` is for
+    Args:
+    keywords: Two or three distinctive words, not a sentence or a question.
+        All of them must appear in the same turn, according to his value system will be search a conversation in the database
+    limit: A integer value, how many past turns to return from the database. Keep it small' 2 is usially enough
+    """
+    turns = get_database().read(keywords, limit)
+    return "\n\n".join(
+        f"{turn['created_at']}\nQuestion: {turn['question']}\nAnswer: {turn['answer']}"
+        for turn in turns
+    )
