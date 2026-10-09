@@ -1,4 +1,5 @@
 import math
+from uuid import uuid4
 
 from loguru import logger
 
@@ -11,6 +12,7 @@ from jarvis.llm.prompts import (
     generate_dynamic_prompt,
 )
 from jarvis.llm.schemas import ChatMessage
+from jarvis.sql.history import Database
 from jarvis.tools.registry import AVAILABLE_TOOLS, TOOL_REGISTRY
 
 
@@ -19,12 +21,17 @@ class AssistantEngine:
 
     def __init__(self, max_tool_iterations: int = 8) -> None:
         self.history: list[ChatMessage] = [
-            ChatMessage(role="system", content=generate_dynamic_prompt())
+            ChatMessage(
+                turn_id=str(uuid4()), role="system", content=generate_dynamic_prompt()
+            )
         ]
         self.memory_timestamp = self.read_memory_timestamp()
         self.max_tool_iterations = max_tool_iterations
         self.max_tokens_per_history = 6000
         self.max_tokens_per_history_local_model = 2000
+        self.database = Database()
+
+        self.database.initialize()
 
     def read_memory_timestamp(self):
         timestamp: int = 0
@@ -74,8 +81,10 @@ class AssistantEngine:
         try:
             summary = call_llm(
                 [
-                    ChatMessage(role="user", content=transcript),
-                    ChatMessage(role="user", content=SUMMARY_PROMPT),
+                    ChatMessage(turn_id=str(uuid4()), role="user", content=transcript),
+                    ChatMessage(
+                        turn_id=str(uuid4()), role="user", content=SUMMARY_PROMPT
+                    ),
                 ],
                 [],
             ).message.content
@@ -89,6 +98,7 @@ class AssistantEngine:
         self.history = [
             self.history[0],
             ChatMessage(
+                turn_id=str(uuid4()),
                 role="user",
                 content=f"<conversation_summary>\n{summary}\n</conversation_summary>",
             ),
@@ -102,13 +112,13 @@ class AssistantEngine:
                 m.content = f"{m.content[:max_len]}... [{len(m.content) - max_len} chars dropped from history]"
         return self.history
 
-    def handle(self, user_text: str) -> str:
+    def handle(self, user_text: str) -> tuple[str, str]:
         """Process user input through the LLM and tool execution pipeline."""
-
+        turn_id = str(uuid4())
         if self._memory_changed():
             # Memory files changed - rebuild the old system prompt into the new one
             self.history[0] = ChatMessage(
-                role="system", content=generate_dynamic_prompt()
+                turn_id=turn_id, role="system", content=generate_dynamic_prompt()
             )
 
         self._reduce_tool_results()
@@ -121,18 +131,20 @@ class AssistantEngine:
         if self._estimate_tokens() > limit:
             self._compact()
 
-        self.history.append(ChatMessage(role="user", content=user_text))
+        self.history.append(
+            ChatMessage(turn_id=turn_id, role="user", content=user_text)
+        )
         iterations = 0
         while iterations < self.max_tool_iterations:
             iterations += 1
             try:
                 msg = call_llm(self.history, AVAILABLE_TOOLS).message
             except Exception as e:
-                return f"Backend error: {e}"
+                return (f"Backend error: {e}", turn_id)
             self.history.append(msg)
 
             if not msg.tool_calls:
-                return msg.content or ""
+                return (msg.content or "", turn_id)
 
             for tool_call in msg.tool_calls:
                 fn_name = tool_call.function.name
@@ -150,6 +162,7 @@ class AssistantEngine:
 
                 self.history.append(
                     ChatMessage(
+                        turn_id=turn_id,
                         role="tool",
                         name=fn_name,
                         tool_call_id=tool_call.id,
@@ -158,5 +171,7 @@ class AssistantEngine:
                 )
 
         fallback_msg = "I reached the maximum limit of tool actions for this step."
-        self.history.append(ChatMessage(role="assistant", content=fallback_msg))
-        return fallback_msg
+        self.history.append(
+            ChatMessage(turn_id=turn_id, role="assistant", content=fallback_msg)
+        )
+        return (fallback_msg, turn_id)

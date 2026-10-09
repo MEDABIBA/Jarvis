@@ -1,4 +1,5 @@
 import json
+from uuid import uuid4
 
 import anthropic
 import ollama
@@ -64,6 +65,7 @@ def call_llm(
 
                 return ModelResponse(
                     message=ChatMessage(
+                        turn_id=str(uuid4()),
                         role="assistant",
                         content=msg_dict.content,
                         tool_calls=tool_calls_parsed,
@@ -116,7 +118,10 @@ def call_llm(
                 ]
                 return ModelResponse(
                     message=ChatMessage(
-                        role="assistant", content=text_content, tool_calls=parsed_tools
+                        turn_id=resp.id,
+                        role="assistant",
+                        content=text_content,
+                        tool_calls=parsed_tools,
                     ),
                     raw_response=resp,
                 )
@@ -154,6 +159,7 @@ def call_llm(
 
                 return ModelResponse(
                     message=ChatMessage(
+                        turn_id=res.id,
                         role="assistant",
                         content=message.content,
                         tool_calls=tool_calls_parsed,

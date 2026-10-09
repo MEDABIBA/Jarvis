@@ -12,6 +12,7 @@ from jarvis.core.config import get_settings
 from jarvis.core.logging import setup_logging
 from jarvis.core.state import state
 from jarvis.engine import AssistantEngine
+from jarvis.llm.schemas import SessionData
 from jarvis.speech.stt import get_recorder
 from jarvis.speech.tts import VOICE_CONFIG, get_voice, is_speaking, speak
 from jarvis.ui.keybindings import make_bindings
@@ -76,7 +77,8 @@ def main() -> None:
                 continue
 
             print(f"\nUser: {text}")
-            answer = engine.handle(text)
+            answer, id = engine.handle(text)
+            engine.database.push(SessionData(question=text, answer=answer, turn_id=id))
             print(f"Jarvis: {answer}\n")
 
             if state.tts_enabled and answer:
@@ -84,6 +86,8 @@ def main() -> None:
 
     except KeyboardInterrupt:
         logger.info("Shutdown requested by user.")
+    except Exception as err:
+        logger.error("Shutting down with error: {}", err)
     finally:
         recorder.shutdown()
         logger.info("Jarvis stopped cleanly.")

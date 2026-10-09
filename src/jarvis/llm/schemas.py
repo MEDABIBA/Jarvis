@@ -15,6 +15,7 @@ class ToolCall(BaseModel):
 
 
 class ChatMessage(BaseModel):
+    turn_id: str
     role: Literal["system", "user", "assistant", "tool"]
     content: str | None = None
     tool_calls: list[ToolCall] | None = None
@@ -40,3 +41,10 @@ class Provider(BaseModel):
     protocol: Literal["anthropic", "openai", "local"]
     api_key: SecretStr | None = None
     gateway_url: str | None = None
+
+
+class SessionData(BaseModel):
+    question: str
+    answer: str
+    # tools: str
+    turn_id: str
