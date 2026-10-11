@@ -20,11 +20,38 @@ _ALLOWED = ".,!?;:-'"
 
 _CODE_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
 
+_URL_RE = re.compile(r"https?://(?:www\.)?([a-zA-Z0-9.-]+)(/[a-zA-Z0-9./_-]+)?")
+_EMAIL_RE = re.compile(r"([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+)\.([a-zA-Z]{2,})")
+_TIME_RE = re.compile(r"\b(\d{1,2}):(\d{2})\b")
+_DATE_RE = re.compile(r"\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b")
+_LARGE_NUM_RE = re.compile(r"\b\d{5,}\b")
+
 VOICE_CONFIG: dict[Language, str] = {
     "en": "EN/en_GB-northern_english_male-medium.onnx",
     "ru": "RU/ru_RU-ruslan-medium.onnx",
     "pl": "PL/pl_PL-mc_speech-medium.onnx",
 }
+
+
+def _process_url(m: re.Match) -> str:
+    """Process a URL match and return a spoken representation."""
+    domain = m.group(1).replace(".", " dot ")
+    path = m.group(2) if m.group(2) else ""
+    path = path.replace("/", " slash ").replace("_", " ").replace("-", " ")
+    return f"{domain}{path}"
+
+
+def _process_email(m: re.Match) -> str:
+    """Process an email match and return a spoken representation."""
+    user = m.group(1).replace(".", " dot ")
+    domain = m.group(2).replace(".", " dot ")
+    tld = m.group(3)
+    return f"{user} at {domain} dot {tld}"
+
+
+def _process_large_number(m: re.Match) -> str:
+    """Process a large number match and return a spoken representation."""
+    return " ".join(list(m.group(0)))
 
 
 def detect_language(text: str) -> Language:
@@ -38,11 +65,17 @@ def detect_language(text: str) -> Language:
 
 def to_speech(
     text: str,
-) -> str:  # Needs improvement: filter big numbers, links, mails, ip adressess, etc.
+) -> str:
     """Strip code blocks and unpronounceable symbols from an assistant reply."""
     text = _CODE_FENCE_RE.sub(" ", text)
     if text.count("```") % 2:
         text = text.split("```")[0]
+
+    text = _URL_RE.sub(_process_url, text)
+    text = _EMAIL_RE.sub(_process_email, text)
+    text = _TIME_RE.sub(r"\1 \2", text)
+    text = _DATE_RE.sub(r"\1 \2 \3", text)
+    text = _LARGE_NUM_RE.sub(_process_large_number, text)
 
     text = text.replace("_", " ")
 
