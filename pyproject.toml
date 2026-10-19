@@ -9,20 +9,20 @@ maintainers = [
   { name = "Adrian Just", email = "iamadyoo@gmail.com" },
 ]
 dependencies = [
-  "anthropic>=1.7.0",
+  "anthropic>=1.15.0",
   "faster-whisper>=1.2.1",
   "loguru>=0.7.3",
-  "numpy>=2.5.3",
+  "numpy>=2.5.4",
   "nvidia-cublas-cu12>=12.9.2.10",
-  "nvidia-cudnn-cu12>=9.26.0.51",
-  "ollama>=0.6.2",
-  "openai>=3.19.2",
+  "nvidia-cudnn-cu12>=9.27.0.42",
+  "ollama>=0.6.3",
+  "openai>=3.32.0",
   "piper-tts>=1.8.0",
   "prompt-toolkit>=3.0.53",
-  "pydantic>=2.13.5",
-  "pydantic-settings>=2.15.0",
+  "pydantic>=2.14.1",
+  "pydantic-settings>=2.16.0",
   "realtimestt[faster-whisper,porcupine]>=1.0.4",
-  "silero-vad>=6.2.1",
+  "silero-vad>=6.2.3",
   "sounddevice>=0.5.6",
 ]
 
