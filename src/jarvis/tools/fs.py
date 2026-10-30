@@ -17,7 +17,7 @@ def get_time() -> str:
 
     Call this when the user asks what time or what date it is.
     """
-    return str(datetime.now().astimezone())
+    return str(datetime.now().isoformat())
 
 
 def find_file(file_name: str) -> str:
