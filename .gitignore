@@ -193,5 +193,7 @@ logs/
 
 sandbox/
 memory/
+src/jarvis/tools/google/credentials.json
+src/jarvis/tools/google/token.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,linux

@@ -16,6 +16,7 @@ from jarvis.llm.schemas import SessionData
 from jarvis.speech.stt import get_recorder
 from jarvis.speech.tts import VOICE_CONFIG, get_voice, is_speaking, speak
 from jarvis.sql.history import get_database
+from jarvis.tools.google.auth import google_auth
 from jarvis.ui.keybindings import make_bindings
 
 task_queue: q.Queue[str] = q.Queue()
@@ -66,6 +67,9 @@ def main() -> None:
     # Warm up voices
     for voice in VOICE_CONFIG:
         threading.Thread(target=get_voice, args=[voice], daemon=True).start()
+
+    # google authentication
+    threading.Thread(target=google_auth, daemon=True).start()
 
     print("\nJarvis is ready! Speak ('jarvis ...') or type commands below.")
     print("Hotkeys: F1 (Switch Model) | F2 (Toggle Mic) | F3 (Toggle Speech)\n")

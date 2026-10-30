@@ -1,9 +1,12 @@
+import os
 from dataclasses import dataclass, field
 from threading import Lock
 
+from google.oauth2.credentials import Credentials
 from loguru import logger
 
 from jarvis.core.config import get_settings
+from jarvis.tools.google import SCOPES, TOKEN_PATH
 
 
 @dataclass
@@ -50,6 +53,11 @@ class AppState:
                 "ENABLED" if self.stt_enabled else "DISABLED",
             )
             return self.stt_enabled
+
+    @property
+    def google_creds(self) -> Credentials | None:
+        if os.path.exists(TOKEN_PATH):
+            return Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
 
 
 state = AppState()
