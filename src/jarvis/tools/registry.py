@@ -4,6 +4,7 @@ from jarvis.tools.fs import (
     create_file,
     delete_file,
     edit_file,
+    fetch_page,
     find_file,
     forget,
     get_time,
@@ -11,6 +12,7 @@ from jarvis.tools.fs import (
     read_file,
     read_from_database,
     remember,
+    web_search,
 )
 from jarvis.tools.google.calendar import (
     delete_calendar_event,
@@ -29,7 +31,9 @@ AVAILABLE_TOOLS: list[Tool] = [
     create_directory,
     remember,
     forget,
+    fetch_page,
     read_from_database,
+    web_search,
     # google integration
     list_calendar_events,
     insert_calendar_event,

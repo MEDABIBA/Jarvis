@@ -3,7 +3,10 @@ import secrets
 from datetime import datetime
 from pathlib import Path
 
+import requests
+from ddgs import DDGS
 from loguru import logger
+from trafilatura import extract
 
 from jarvis.core.config import get_settings
 from jarvis.sql.history import get_database
@@ -346,3 +349,60 @@ def read_from_database(keywords: str, limit: int = 2) -> str:
         f"{turn['created_at']}\nQuestion: {turn['question']}\nAnswer: {turn['answer']}"
         for turn in turns
     )
+
+
+def web_search(query: str) -> str:
+    """Search the internet for current information.
+
+    Call this when the user asks about recent events, news, weather, prices,
+    or anything you don't know. If it necessary include today's date when searching for news or recent events
+    Do NOT call fetch_page first — start here.
+
+    Args:
+        query: A short search query. For news, include the date.
+            Example: "Metro 2039 November 19 2039"
+    """
+    try:
+        with DDGS() as ddgs:
+            results = [
+                f"Title: {r['title']}\nBody: {r['body']}\nURL: {r['href']}"
+                for r in ddgs.text(query, max_results=3)
+            ]
+            return "\n".join(results) if results else "No results found."
+    except Exception:
+        return "Search failed. Try rephrasing the query."
+
+
+def fetch_page(url: str) -> str:
+    """Fetch a web page and extract its main article content
+
+    Call this ONLY when you already have a URL — from web_search results
+    or given directly by the user. If you need to find something first,
+    call web_search instead.
+
+    Args:
+        url: Full URL with http or https.
+            Example: "https://docs.python.org/3/whatsnew/3.13.html"
+    """
+
+    HEADERS = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+    }
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=5)
+    except Exception as e:
+        return f"HTTP error occurred: {e}"
+    if not resp.text:
+        return "Could not download page"
+    result = extract(
+        resp.text,
+        include_links=False,
+        favor_recall=False,
+    )
+    if not result:
+        return "Error: no  extractable format"
+    if len(result) > 6000:
+        return result[:6000] + " \n truncated"
+    return result
