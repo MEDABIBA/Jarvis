@@ -12,11 +12,11 @@ def _add_one_hour(start):
 
 
 def list_calendar_events(time_min: str | None = None, time_max: str | None = None):
-    """Return a list of the planned calendar events
-    Call it if you must to know the user`s plan
+    """List planned calendar events with their IDs. Call when you need to know the user's plans.
+
     Args:
-        time_min: Start of range (inclusive). RFC3339 with timezone, e.g. 2011-06-03T10:00:00Z. Defaults to now.
-        time_max: End of range (exclusive). RFC3339 with timezone. Optional.
+        time_min: Range start (inclusive), RFC3339 with timezone, e.g. 2026-11-01T10:00:00Z. Defaults to now.
+        time_max: Range end (exclusive), RFC3339 with timezone. Optional.
     """
     try:
         creds = state.google_creds
@@ -66,15 +66,15 @@ def insert_calendar_event(
     location: str | None = None,
     additional_emails: list[str] | None = None,
 ):
-    """Create a calendar event
-    Call it if user ask you to set an event in the calendar
+    """Create a calendar event. Call when the user asks to add an event.
+
     Args:
-        summary: Title of the event.
-        start: Start time. RFC3339 with timezone, e.g. 2026-11-01T10:00:00Z.
-        description: Description of the event.
-        end: End time. RFC3339 with timezone. Defaults to 1 hour after start.
-        location: Geographic location of the event as free-form text. Optional.
-        additional_emails: The attendees of the event, in list format. For example: ["example@gmail.com", "second@gmail.com"]
+        summary: Event title.
+        start: Start time, RFC3339 with timezone, e.g. 2026-11-01T10:00:00Z.
+        description: Event description.
+        end: End time, RFC3339 with timezone. Defaults to 1 hour after start.
+        location: Free-form location. Optional.
+        additional_emails: Attendee emails as a list, e.g. ["a@gmail.com", "b@gmail.com"].
     """
     try:
         creds = state.google_creds
@@ -104,10 +104,10 @@ def insert_calendar_event(
 
 
 def delete_calendar_event(calendar_id: str):
-    """Delete a calendar event
-    Call it if user ask you to delete an event in the calendar
+    """Delete a calendar event. Call when the user asks to remove an event.
+
     Args:
-        calendar_id: Calendar identifier, to retrieve calendar IDs call the list_calendar_events method
+        calendar_id: Event ID; get it from list_calendar_events.
     """
     try:
         creds = state.google_creds

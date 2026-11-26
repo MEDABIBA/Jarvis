@@ -1,10 +1,10 @@
+from google.auth.exceptions import GoogleAuthError
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from loguru import logger
 
 from jarvis.core.state import state
 from jarvis.tools.google import CREDENTIALS_PATH, SCOPES, TOKEN_PATH
-from google.auth.exceptions import GoogleAuthError
 
 
 def google_auth():
@@ -15,7 +15,7 @@ def google_auth():
                 creds.refresh(Request())
             except GoogleAuthError as e:
                 logger.warning("Google refresh credentials was failed: %s", e)
-                return        
+                return
         else:
             try:
                 flow = InstalledAppFlow.from_client_secrets_file(

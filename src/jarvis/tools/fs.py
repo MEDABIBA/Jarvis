@@ -16,22 +16,17 @@ MAX_TOOL_OUTPUT = 2000
 
 
 def get_time() -> str:
-    """Get the current local date and time with timezone information.
-
-    Call this when the user asks what time or what date it is.
-    """
+    """Get the current local date and time with timezone. Call when the user asks the time or date."""
     return str(datetime.now().isoformat())
 
 
 def find_file(file_name: str) -> str:
-    """Find files inside the sandbox by a partial name.
+    """Find sandbox files by partial name.
 
-    Call this FIRST whenever the user mentions a file but does not give a full
-    path. Never guess a file extension — search by the name the user gave.
+    Call FIRST whenever the user mentions a file without a full path. Never guess the extension.
 
     Args:
-        file_name: Any part of the file name, without guessing an extension.
-            Example: user says "the jarvis file" -> pass "jarvis".
+        file_name: Part of the name as the user said it, no extension, e.g. "jarvis".
     """
     settings = get_settings()
     sandbox_root = settings.sandbox.resolve()
@@ -58,21 +53,13 @@ def find_file(file_name: str) -> str:
 
 
 def read_file(path: str, from_line: int = 0) -> str:
-    """Read the content of a file inside the sandbox.
+    """Read a sandbox file. If you only know part of the name, call find_file first.
 
-    Call this only when you already have a path — normally one returned by
-    find_file. If you only know part of the name, call find_file first.
-
-    Long files are cut off. When the result ends with a truncation notice,
-    call this again with `from_line` set to the line it names - but only
-    if you actually need the rest.
-
+    Long files are cut off with a notice naming a line; call again with that from_line only if you need the rest.
 
     Args:
-        path: Path relative to the sandbox root, as returned by find_file.
-            Example: "notes/todo.txt".
-        from_line: Line to start reading from, counting from 0. Defaults to
-            the start of the file. Example: 120.
+        path: Sandbox-relative path from find_file, e.g. "notes/todo.txt".
+        from_line: 0-based line to start from. Defaults to 0.
     """
     res = []
     size = 0
@@ -104,14 +91,10 @@ def read_file(path: str, from_line: int = 0) -> str:
 
 
 def list_dir(path: str = ".") -> str:
-    """List the contents of a directory inside the sandbox.
-
-    Use this to explore the structure when you do not know where a file lives.
-    Prefer find_file when you already know part of the file name.
+    """List a sandbox directory. Use to explore; prefer find_file when you know part of the name.
 
     Args:
-        path: Directory path relative to the sandbox root. Defaults to the
-            sandbox root itself. Example: "notes".
+        path: Sandbox-relative directory, e.g. "notes". Defaults to the sandbox root.
     """
     try:
         target = safe_path(path)
@@ -133,16 +116,14 @@ def list_dir(path: str = ".") -> str:
 
 
 def edit_file(path: str, old_text: str, new_text: str) -> str:
-    """Replace an exact single occurrence of text inside a sandbox file.
+    """Replace one exact occurrence of text in an existing sandbox file.
 
-    Call this whenever the user asks to change, fix, rename or remove something
-    inside an existing file. Never ask the user for the exact text — call
-    read_file first and copy it verbatim.
+    Use for any change inside a file. Never ask the user for the exact text; call read_file first and copy it verbatim.
 
     Args:
-        path: Path inside the sandbox, as returned by find_file.
-        old_text: Exact text to replace. Must occur exactly once in the file.
-        new_text: Replacement text. An empty string deletes old_text.
+        path: Sandbox path from find_file.
+        old_text: Exact text to replace; must occur exactly once.
+        new_text: Replacement text; an empty string deletes old_text.
     """
     try:
         target = safe_path(path)
@@ -168,18 +149,11 @@ def edit_file(path: str, old_text: str, new_text: str) -> str:
 
 
 def create_file(path: str, content: str = "") -> str:
-    """Create a new file inside the sandbox with optional initial content.
-
-    Call this when the user asks to create a new file, empty or with content.
-    Fails if the file already exists — use edit_file to change an existing one.
+    """Create a new sandbox file. Fails if it exists; use edit_file for existing files.
 
     Args:
-        path: Full path of the new file relative to the sandbox root, including
-            the file name and extension. Never pass a directory on its own.
-            Example: user says "create example.py in the notes folder" ->
-            pass "notes/example.py".
-        content: The complete text of the file. Write the whole script in this
-            single call — never create an empty file and grow it with edit_file.
+        path: Sandbox-relative path with file name and extension, never a bare directory, e.g. "notes/example.py".
+        content: The complete file text in this one call; never create an empty file and grow it with edit_file.
     """
     try:
         target = safe_path(path)
@@ -198,11 +172,9 @@ def create_file(path: str, content: str = "") -> str:
 
 
 def delete_file(path: str) -> str:
-    """Permanently delete a file inside the sandbox.
+    """Permanently delete a sandbox file; cannot be undone.
 
-    Call this ONLY when the user explicitly asks to delete or remove a file.
-    ALWAYS call find_file first to get the real path — never guess it and never
-    ask the user for it. The deletion cannot be undone.
+    Call ONLY when the user explicitly asks to delete a file. ALWAYS get the path from find_file first; never guess it or ask the user for it.
 
     Args:
         path: Exact path returned by find_file.
@@ -226,16 +198,10 @@ def delete_file(path: str) -> str:
 
 
 def create_directory(path: str) -> str:
-    """Create a new directory inside the sandbox.
-
-    Call this when the user asks to create a directory. Fails if the path
-    already exists — call list_dir first if you are unsure.
+    """Create a sandbox directory. Fails if the path exists; call list_dir first if unsure.
 
     Args:
-        path: Full path of the new directory relative to the sandbox root,
-            including the directory name.
-            Example: user says "create Jarvis in the example directory" ->
-            pass "example/Jarvis".
+        path: Sandbox-relative path including the new directory name, e.g. "example/Jarvis".
     """
     try:
         target = safe_path(path)
@@ -257,13 +223,11 @@ MEMORY_DIR = Path(__file__).parents[3] / "memory"
 
 
 def remember(chat_memory: str = "", user_profile: str = "") -> str:
-    """Save a fact to your memory.
-
-    Call whis when user ask to remember something, or tell you important info about him to write a brief history of the chat
+    """Save facts to memory. Call when the user asks you to remember something or shares important info about themselves.
 
     Args:
-        chat_memory: One or two sentances on what matters from conversation so far. Empty string, if there is nothing worth storing, or this info will be stored in user_profile arguments.
-        user_profile: One or two sentances about the user themselves - their name, preferences, habits, long-lived facts. Empty string, if there is nothing worth storing, or this info will be stored in chat_memory arguments."""
+        chat_memory: One or two sentences on what matters from the conversation; empty string if nothing or it belongs in user_profile.
+        user_profile: One or two sentences about the user (name, preferences, habits, long-lived facts); empty string if nothing or it belongs in chat_memory."""
 
     if not chat_memory.strip() and not user_profile.strip():
         return "Nothing saved: both arguments were empty"
@@ -294,15 +258,12 @@ def remember(chat_memory: str = "", user_profile: str = "") -> str:
 
 
 def forget(entry_ids: str):
-    """Remove deprecated information from the memory files by their id
+    """Remove memory entries by id. Call when a stored fact is outdated, the user asks you to forget it, or it is a duplicate.
 
-    Call this when a stored fact is no longer true, when user asks you to forget something, or when you notice a duplicate.
-    The entries and their ids are already shown to you in the <chat_memory> and
-    <user_profile> blocks of your system prompt. Read the ids from there
+    Read the ids from the <chat_memory> and <user_profile> blocks of your system prompt.
 
     Args:
-        entry_ids: One or more ids, comma separated
-        Example: "a3f1, 7b02"."""
+        entry_ids: One or more comma-separated ids, e.g. "a3f1, 7b02"."""
 
     id_list = [i.strip() for i in entry_ids.split(",")]
     removed = []
@@ -336,13 +297,13 @@ def forget(entry_ids: str):
 
 
 def read_from_database(keywords: str, limit: int = 2) -> str:
-    """Search your past conversation with the user by keywords
-    Call it when the user refers to something from an earlier conversation that is no longer in your context.
-    Do NOT call this to save a new fact that is what `remember` is for
+    """Search past conversations with the user by keywords.
+
+    Call when the user refers to an earlier conversation no longer in your context. Do NOT use it to save facts; use remember.
+
     Args:
-    keywords: Two or three distinctive words, not a sentence or a question.
-        All of them must appear in the same turn, according to his value system will be search a conversation in the database
-    limit: A integer value, how many past turns to return from the database. Keep it small' 2 is usially enough
+        keywords: Two or three distinctive words, not a sentence; all must appear in the same past turn.
+        limit: How many past turns to return; keep it small, 2 is usually enough.
     """
     turns = get_database().read(keywords, limit)
     return "\n\n".join(
@@ -352,15 +313,12 @@ def read_from_database(keywords: str, limit: int = 2) -> str:
 
 
 def web_search(query: str) -> str:
-    """Search the internet for current information.
+    """Search the internet for current information. Start here, not with fetch_page.
 
-    Call this when the user asks about recent events, news, weather, prices,
-    or anything you don't know. If it necessary include today's date when searching for news or recent events
-    Do NOT call fetch_page first — start here.
+    Call when the user asks about recent events, news, weather, prices, or anything you don't know.
 
     Args:
-        query: A short search query. For news, include the date.
-            Example: "Metro 2039 November 19 2039"
+        query: A short search query; for news or recent events include the date, e.g. "Metro 2039 November 19 2039".
     """
     try:
         with DDGS() as ddgs:
@@ -374,15 +332,12 @@ def web_search(query: str) -> str:
 
 
 def fetch_page(url: str) -> str:
-    """Fetch a web page and extract its main article content
+    """Fetch a web page and extract its main text.
 
-    Call this ONLY when you already have a URL — from web_search results
-    or given directly by the user. If you need to find something first,
-    call web_search instead.
+    Call ONLY when you already have a URL from web_search or from the user; otherwise call web_search first.
 
     Args:
-        url: Full URL with http or https.
-            Example: "https://docs.python.org/3/whatsnew/3.13.html"
+        url: Full http or https URL.
     """
 
     HEADERS = {
