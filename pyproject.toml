@@ -58,3 +58,6 @@ line-length = 88
 [tool.ruff.lint]
 select = ["UP", "RUF", "I", "PIE", "PYI", "F", "B9", "C4", "SIM", "E"]
 ignore = ["E501"]
+
+[tool.ty.src]
+include = ["src"]

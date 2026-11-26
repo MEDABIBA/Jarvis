@@ -12,9 +12,9 @@ from jarvis.core.config import get_settings
 from jarvis.core.logging import setup_logging
 from jarvis.core.state import state
 from jarvis.engine import AssistantEngine
-from jarvis.llm.schemas import SessionData
+from jarvis.runtime import run_turn
 from jarvis.speech.stt import get_recorder
-from jarvis.speech.tts import VOICE_CONFIG, get_voice, is_speaking, speak
+from jarvis.speech.tts import get_speech_output, is_speaking
 from jarvis.sql.history import get_database
 from jarvis.tools.google.auth import google_auth
 from jarvis.ui.keybindings import make_bindings
@@ -59,20 +59,30 @@ def main() -> None:
 
     recorder = get_recorder()
     engine = AssistantEngine()
-    session: PromptSession = PromptSession(key_bindings=make_bindings(recorder))
+    speech = get_speech_output()
+    turn_cancel = threading.Event()
+
+    def cancel_current_turn() -> None:
+        turn_cancel.set()
+        speech.cancel()
+
+    session: PromptSession = PromptSession(
+        key_bindings=make_bindings(
+            recorder, stop_speech=speech.cancel, cancel_turn=cancel_current_turn
+        )
+    )
 
     threading.Thread(target=input_loop, args=[session], daemon=True).start()
     threading.Thread(target=voice_loop, args=[recorder], daemon=True).start()
-
-    # Warm up voices
-    for voice in VOICE_CONFIG:
-        threading.Thread(target=get_voice, args=[voice], daemon=True).start()
 
     # google authentication
     threading.Thread(target=google_auth, daemon=True).start()
 
     print("\nJarvis is ready! Speak ('jarvis ...') or type commands below.")
-    print("Hotkeys: F1 (Switch Model) | F2 (Toggle Mic) | F3 (Toggle Speech)\n")
+    print(
+        "Hotkeys: F1 (Switch Model) | F2 (Toggle Mic) | "
+        "F3 (Toggle Speech) | F4 (Cancel Reply)\n"
+    )
 
     try:
         while True:
@@ -82,18 +92,30 @@ def main() -> None:
                 continue
 
             print(f"\nUser: {text}")
-            answer, id = engine.handle(text)
-            get_database().push(SessionData(question=text, answer=answer, turn_id=id))
-            print(f"Jarvis: {answer}\n")
-
-            if state.tts_enabled and answer:
-                speak(answer)
+            turn_cancel.clear()
+            print("Jarvis: ", end="", flush=True)
+            result = run_turn(
+                engine,
+                text,
+                on_text=lambda delta: print(delta, end="", flush=True),
+                cancel=turn_cancel,
+                speech=speech
+                if state.tts_enabled and settings.speech.provider != "text"
+                else None,
+                locale=settings.speech.locale,
+            )
+            if result is not None:
+                get_database().push(result)
+            else:
+                print("\n[Reply cancelled]", end="")
+            print("\n")
 
     except KeyboardInterrupt:
         logger.info("Shutdown requested by user.")
     except Exception as err:
         logger.error("Shutting down with error: {}", err)
     finally:
+        speech.close()
         recorder.shutdown()
         logger.info("Jarvis stopped cleanly.")
         sys.exit(0)

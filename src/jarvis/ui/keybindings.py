@@ -1,10 +1,22 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+
 from prompt_toolkit.key_binding import KeyBindings
-from RealtimeSTT.audio_recorder import AudioToTextRecorder
+
+if TYPE_CHECKING:
+    from RealtimeSTT.audio_recorder import AudioToTextRecorder
 
 from jarvis.core.state import state
 
 
-def make_bindings(recorder: AudioToTextRecorder) -> KeyBindings:
+def make_bindings(
+    recorder: AudioToTextRecorder,
+    *,
+    stop_speech: Callable[[], None] | None = None,
+    cancel_turn: Callable[[], None] | None = None,
+) -> KeyBindings:
     """Construct global runtime hotkeys for interactive console control."""
     bindings = KeyBindings()
 
@@ -23,6 +35,14 @@ def make_bindings(recorder: AudioToTextRecorder) -> KeyBindings:
     @bindings.add("f3")
     def _switch_tts(event) -> None:
         is_active = state.toggle_tts()
+        if not is_active and stop_speech is not None:
+            stop_speech()
         print(f"\n[F3] Voice output synthesis: {'ON' if is_active else 'MUTED'}")
+
+    @bindings.add("f4")
+    def _cancel_turn(event) -> None:
+        if cancel_turn is not None:
+            cancel_turn()
+            print("\n[F4] Reply cancellation requested")
 
     return bindings
