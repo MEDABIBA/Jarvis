@@ -87,7 +87,7 @@ def call_llm(
                     messages=to_anthropic(messages),
                     tools=to_anthropic_tools(tools),
                     output_config={"effort": "medium"},
-                    cache_control={"type": "ephemeral"},
+                    cache_control={"type": "ephemeral", "ttl": "1h"},
                 )
 
                 if resp.stop_reason == "max_tokens":

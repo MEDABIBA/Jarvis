@@ -67,6 +67,7 @@ class AssistantEngine:
 
         Called when the number of tokens exceeds the set limit (max_tokens_per_history_local_model or max_tokens_per_history).
         Asks the model to compact the chat history into one <conversation_summary> message with the user role. The recent tail stays verbatim"""
+        self._reduce_tool_results()
         idx = self._cut_index(keep=3)
         head, tail = self.history[1:idx], self.history[idx:]
 
@@ -116,8 +117,6 @@ class AssistantEngine:
             self.history[0] = ChatMessage(
                 turn_id=turn_id, role="system", content=generate_dynamic_prompt()
             )
-
-        self._reduce_tool_results()
 
         limit = (
             self.max_tokens_per_history_local_model
