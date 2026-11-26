@@ -4,13 +4,18 @@ from loguru import logger
 
 from jarvis.core.state import state
 from jarvis.tools.google import CREDENTIALS_PATH, SCOPES, TOKEN_PATH
+from google.auth.exceptions import GoogleAuthError
 
 
 def google_auth():
     creds = state.google_creds
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            try:
+                creds.refresh(Request())
+            except GoogleAuthError as e:
+                logger.warning("Google refresh credentials was failed: %s", e)
+                return        
         else:
             try:
                 flow = InstalledAppFlow.from_client_secrets_file(
