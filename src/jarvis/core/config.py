@@ -1,10 +1,36 @@
 from functools import cache, cached_property
 from pathlib import Path
+from typing import Literal
 
-from pydantic import SecretStr, computed_field
+from pydantic import BaseModel, Field, SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from jarvis.llm.schemas import Provider
+
+
+class SpeechSettings(BaseModel):
+    provider: Literal["piper", "azure_sdk", "azure_rest", "text"] = "piper"
+    locale: str = "en-GB"
+    azure_key: SecretStr | None = None
+    azure_region: str | None = Field(default=None, pattern=r"^[A-Za-z0-9-]+$")
+    azure_voices: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en-GB": "en-GB-RyanNeural",
+            "pl-PL": "pl-PL-MarekNeural",
+            "ru-RU": "ru-RU-DmitryNeural",
+        }
+    )
+    piper_voices: dict[str, str] = Field(
+        default_factory=lambda: {
+            "en-GB": "EN/en_GB-northern_english_male-medium.onnx",
+            "pl-PL": "PL/pl_PL-mc_speech-medium.onnx",
+            "ru-RU": "RU/ru_RU-ruslan-medium.onnx",
+        }
+    )
+    first_audio_timeout: float = Field(default=5, gt=0, le=30, allow_inf_nan=False)
+    cooldown: float = Field(default=30, ge=0, allow_inf_nan=False)
+    queue_size: int = Field(default=8, ge=1, le=64)
+    max_segment_length: int = Field(default=300, ge=16, le=2000)
 
 
 class AppSettings(BaseSettings):
@@ -35,6 +61,7 @@ class AppSettings(BaseSettings):
     debug: bool = True
     sandbox: Path = Path("./sandbox")
     voices_dir: Path = Path("./voices")
+    speech: SpeechSettings = Field(default_factory=SpeechSettings)
 
     anthropic_api_key: SecretStr | None = None
     gemini_api_key: SecretStr | None = None

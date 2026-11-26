@@ -14,6 +14,7 @@ dependencies = [
   "faster-whisper>=1.2.1",
   "google-api-python-client>=2.202.0",
   "google-auth-oauthlib>=1.5.0",
+  "httpx>=0.28.1,<1",
   "loguru>=0.8.0",
   "numpy>=2.5.5",
   "nvidia-cublas-cu12>=12.9.3.13",
@@ -32,6 +33,9 @@ dependencies = [
 
 [project.scripts]
 jarvis = "jarvis.__main__:main"
+
+[project.optional-dependencies]
+azure = ["azure-cognitiveservices-speech>=1.48.2,<2"]
 
 [dependency-groups]
 lint = [
