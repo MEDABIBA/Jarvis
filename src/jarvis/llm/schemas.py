@@ -28,6 +28,32 @@ class ModelResponse(BaseModel):
     raw_response: Any = None
 
 
+class LLMStreamEvent(BaseModel):
+    """Only public assistant text is incremental; tool calls arrive fully assembled."""
+
+    kind: Literal["text_delta", "message_complete"]
+    text: str = ""
+    message: ChatMessage | None = None
+    usage: dict[str, Any] | None = None
+    raw_response: Any = None
+
+
+class TurnEvent(BaseModel):
+    """Engine progress. Only a complete event's answer is the final response.
+
+    Text before a tool call is public progress, not part of the final answer.
+    Error is terminal (there is no following complete event).
+    """
+
+    turn_id: str
+    kind: Literal["text_delta", "tool_start", "tool_end", "complete", "error"]
+    text: str = ""
+    answer: str = ""
+    tool_name: str | None = None
+    tool_call_id: str | None = None
+    error: str | None = None
+
+
 class Tool(Protocol):
     __name__: str
 

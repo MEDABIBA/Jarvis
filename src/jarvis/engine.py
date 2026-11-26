@@ -1,17 +1,19 @@
 import math
+from collections.abc import Generator
+from contextlib import closing
 from uuid import uuid4
 
 from loguru import logger
 
 from jarvis.core.state import state
-from jarvis.llm.client import call_llm
+from jarvis.llm.client import call_llm, stream_llm
 from jarvis.llm.prompts import (
     MEMORY_DIR,
     MEMORY_FILES,
     SUMMARY_PROMPT,
     generate_dynamic_prompt,
 )
-from jarvis.llm.schemas import ChatMessage
+from jarvis.llm.schemas import ChatMessage, ToolCall, TurnEvent
 from jarvis.tools.registry import AVAILABLE_TOOLS, TOOL_REGISTRY
 
 
@@ -62,7 +64,7 @@ class AssistantEngine:
             idx -= 1
         return idx
 
-    def _compact(self) -> None:
+    def _compact(self, *, backend: str | None = None) -> None:
         """Replace the older part of the history with a summary of it.
 
         Called when the number of tokens exceeds the set limit (max_tokens_per_history_local_model or max_tokens_per_history).
@@ -84,6 +86,7 @@ class AssistantEngine:
                     ),
                 ],
                 [],
+                backend=backend,
             ).message.content
         except Exception as err:
             logger.error("Compaction failed, keeping the history as is: {}", err)
@@ -109,64 +112,142 @@ class AssistantEngine:
                 m.content = f"{m.content[:max_len]}... [{len(m.content) - max_len} chars dropped from history]"
         return self.history
 
-    def handle(self, user_text: str) -> tuple[str, str]:
-        """Process user input through the LLM and tool execution pipeline."""
+    def handle_stream(self, user_text: str) -> Generator[TurnEvent]:
+        """Yield public progress and one terminal complete/error event.
+
+        The backend is fixed when iteration starts, including compaction and tool
+        follow-ups. Close the iterator to cancel; no new tool starts after close.
+        """
         turn_id = str(uuid4())
-        if self._memory_changed():
-            # Memory files changed - rebuild the old system prompt into the new one
-            self.history[0] = ChatMessage(
-                turn_id=turn_id, role="system", content=generate_dynamic_prompt()
-            )
+        backend = state.active_model
+        partial_text: list[str] = []
+        pending_tools: list[ToolCall] = []
 
-        limit = (
-            self.max_tokens_per_history_local_model
-            if state.active_model == "local"
-            else self.max_tokens_per_history
-        )
-        if self._estimate_tokens() > limit:
-            self._compact()
-
-        self.history.append(
-            ChatMessage(turn_id=turn_id, role="user", content=user_text)
-        )
-        iterations = 0
-        while iterations < self.max_tool_iterations:
-            iterations += 1
-            try:
-                msg = call_llm(self.history, AVAILABLE_TOOLS).message
-            except Exception as e:
-                return (f"Backend error: {e}", turn_id)
-            self.history.append(msg)
-
-            if not msg.tool_calls:
-                return (msg.content or "", turn_id)
-
-            for tool_call in msg.tool_calls:
-                fn_name = tool_call.function.name
-                fn_args = tool_call.function.arguments
-                logger.info("Tool invocation requested: {}({})", fn_name, fn_args)
-
-                if fn_name not in TOOL_REGISTRY:
-                    result = f"Error: Tool '{fn_name}' does not exist in registry."
-                else:
-                    try:
-                        result = TOOL_REGISTRY[fn_name](**fn_args)
-                    except Exception as err:
-                        logger.exception("Error executing tool '{}'", fn_name)
-                        result = f"Tool execution error: {err}"
-
+        def preserve_interrupted_history() -> None:
+            if partial_text:
+                self.history.append(
+                    ChatMessage(
+                        turn_id=turn_id, role="assistant", content="".join(partial_text)
+                    )
+                )
+                partial_text.clear()
+            # A completed assistant tool message must always have matching results,
+            # even if the consumer cancels at tool_start or between two calls.
+            for call in pending_tools:
                 self.history.append(
                     ChatMessage(
                         turn_id=turn_id,
                         role="tool",
-                        name=fn_name,
-                        tool_call_id=tool_call.id,
-                        content=str(result),
+                        name=call.function.name,
+                        tool_call_id=call.id,
+                        content="Tool execution cancelled before a result was available.",
                     )
                 )
+            pending_tools.clear()
 
-        fallback_msg = "I reached the maximum limit of tool actions for this step."
-        self.history.append(
-            ChatMessage(turn_id=turn_id, role="assistant", content=fallback_msg)
-        )
-        return (fallback_msg, turn_id)
+        try:
+            if self._memory_changed():
+                self.history[0] = ChatMessage(
+                    turn_id=turn_id, role="system", content=generate_dynamic_prompt()
+                )
+
+            limit = (
+                self.max_tokens_per_history_local_model
+                if backend == "local"
+                else self.max_tokens_per_history
+            )
+            if self._estimate_tokens() > limit:
+                self._compact(backend=backend)
+
+            self.history.append(
+                ChatMessage(turn_id=turn_id, role="user", content=user_text)
+            )
+            for _ in range(self.max_tool_iterations):
+                msg: ChatMessage | None = None
+                with closing(
+                    stream_llm(self.history, AVAILABLE_TOOLS, backend=backend)
+                ) as events:
+                    for event in events:
+                        if event.kind == "text_delta":
+                            partial_text.append(event.text)
+                            yield TurnEvent(
+                                turn_id=turn_id, kind="text_delta", text=event.text
+                            )
+                        elif event.kind == "message_complete":
+                            msg = event.message
+                if msg is None:
+                    raise RuntimeError("LLM stream did not produce a complete message")
+                msg = msg.model_copy(update={"turn_id": turn_id})
+                self.history.append(msg)
+                partial_text.clear()
+
+                if not msg.tool_calls:
+                    yield TurnEvent(
+                        turn_id=turn_id, kind="complete", answer=msg.content or ""
+                    )
+                    return
+
+                pending_tools.extend(msg.tool_calls)
+                for tool_call in msg.tool_calls:
+                    fn_name = tool_call.function.name
+                    yield TurnEvent(
+                        turn_id=turn_id,
+                        kind="tool_start",
+                        tool_name=fn_name,
+                        tool_call_id=tool_call.id,
+                    )
+                    logger.info("Tool invocation requested: {}", fn_name)
+                    if fn_name not in TOOL_REGISTRY:
+                        result = f"Error: Tool '{fn_name}' does not exist in registry."
+                    else:
+                        try:
+                            result = TOOL_REGISTRY[fn_name](
+                                **tool_call.function.arguments
+                            )
+                        except Exception as err:
+                            logger.exception("Error executing tool '{}'", fn_name)
+                            result = f"Tool execution error: {err}"
+
+                    self.history.append(
+                        ChatMessage(
+                            turn_id=turn_id,
+                            role="tool",
+                            name=fn_name,
+                            tool_call_id=tool_call.id,
+                            content=str(result),
+                        )
+                    )
+                    pending_tools.pop(0)
+                    yield TurnEvent(
+                        turn_id=turn_id,
+                        kind="tool_end",
+                        tool_name=fn_name,
+                        tool_call_id=tool_call.id,
+                    )
+
+            fallback = "I reached the maximum limit of tool actions for this step."
+            self.history.append(
+                ChatMessage(turn_id=turn_id, role="assistant", content=fallback)
+            )
+            yield TurnEvent(turn_id=turn_id, kind="text_delta", text=fallback)
+            yield TurnEvent(turn_id=turn_id, kind="complete", answer=fallback)
+        except Exception as err:
+            preserve_interrupted_history()
+            answer = f"Backend error: {err}"
+            yield TurnEvent(
+                turn_id=turn_id,
+                kind="error",
+                text=answer,
+                answer=answer,
+                error=str(err),
+            )
+        finally:
+            preserve_interrupted_history()
+
+    def handle(self, user_text: str) -> tuple[str, str]:
+        """Compatibility consumer returning only the final answer and turn ID."""
+        with closing(self.handle_stream(user_text)) as events:
+            for event in events:
+                if event.kind in ("complete", "error"):
+                    return event.answer, event.turn_id
+        raise RuntimeError("Turn stream did not produce a terminal event")
