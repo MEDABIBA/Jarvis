@@ -12,7 +12,7 @@ Jarvis works both locally via [Ollama](https://ollama.com/) and with cloud LLM p
 ## Key Capabilities
 
 - **Always-On Voice Interface:** Wake word detection listening for `"jarvis"`.
-- **Offline Multi-Lingual Speech Synthesis:** Fast, local text-to-speech output using Piper TTS with support for English, Polish, and Russian.
+- **Streaming Speech Output:** Azure Speech SDK/REST with local Piper fallback, explicit language profiles, and text-only operation when speech is unavailable. Cloud speech is opt-in; Piper remains the default.
 - **Google Calendar Integration:** Access your Google Calendar to list, create, and delete events
 - **Hybrid LLM Provider Support:** Seamless switching between local inference (Ollama) and cloud providers (Anthropic Claude, OpenAI GPT, Google Gemini, Cerebras) through a unified API abstraction layer.
 - **Runtime Hotkeys:** Dedicated keyboard shortcuts for toggling audio capture, speech synthesis, and switching active model backends on the fly.
@@ -120,7 +120,38 @@ Jarvis registers global keyboard hooks to enable runtime control without interru
 | :------- | :------------------ | :--------------------------------------------------------------------------------------------------------------- |
 | **`F1`** | Cycle Active Model  | Switches across available backends (`local`, `claude`, `gemini`, `gpt`, `cerebras`) based on active credentials. |
 | **`F2`** | Toggle Microphone   | Enables or disables audio input capture and wake word detection.                                                 |
-| **`F3`** | Toggle Audio Output | Enables or mutes voice synthesis playback.                                                                       |
+| **`F3`** | Toggle Audio Output | Enables speech for the next reply or mutes current playback.                                                     |
+| **`F4`** | Cancel Reply        | Stops speech and requests cancellation of generation; running tools cannot be rolled back.                       |
+
+---
+
+## Speech Setup
+
+Speech is muted at startup; press **F3** to enable it. Set your language explicitly
+(`en-GB` by default):
+
+```ini
+JARVIS_SPEECH__LOCALE=pl-PL
+```
+
+For Azure voices, create an Azure Speech resource and add its credentials to `.env`:
+
+```ini
+JARVIS_SPEECH__PROVIDER=azure_sdk
+JARVIS_SPEECH__AZURE_KEY=your-speech-resource-key
+JARVIS_SPEECH__AZURE_REGION=westeurope
+```
+
+```bash
+uv run --extra azure jarvis
+```
+
+Use `azure_rest` to run without the optional SDK, `piper` for offline synthesis,
+or `text` to disable synthesis. Azure receives the spoken text and may incur
+usage charges. Fallback never replays a response after its audio has started.
+
+See [speech configuration and fallback behavior](docs/SPEECH.md) for voice maps,
+local model paths, cancellation, and current streaming limitations.
 
 ---
 

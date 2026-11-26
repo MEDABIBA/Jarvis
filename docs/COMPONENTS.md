@@ -43,13 +43,15 @@ class AppSettings {
 
 ## 2. Speech Processing Module (`jarvis.speech`)
 
-Handles acoustic input capture, local speech-to-text, and local text-to-speech synthesis.
+Handles acoustic input capture, local speech-to-text, and local or cloud speech synthesis.
 
 ### Text-to-Speech (`jarvis.speech.tts`)
 
-- **Engine:** Piper TTS (`piper-tts`) loaded from local ONNX models.
-- **Language Detection:** Uses regular expressions to match Cyrillic (`ru`), Polish diacritics (`pl`), or English (`en`) character sets to select the appropriate voice model.
-- **Acoustic Feedback Prevention:** Flags the `is_speaking` thread event to pause STT processing during active playback.
+- **Providers:** Optional Azure Speech SDK, Azure REST, and lazy local Piper. `SpeechService` controls fallback and cooldowns without opening a speaker.
+- **Language:** Explicit per-turn locale and configurable voice maps; no character-based guessing.
+- **Output:** `SpeechOutput` queues completed sentences and streams raw PCM through a separate lazy player. Queue overload or speech failure leaves text generation running.
+- **Acoustic Feedback Prevention:** The local `is_speaking` event drops STT transcriptions during playback. Voice interruption is not implemented.
+- See [Speech Output](SPEECH.md) for module boundaries, configuration, and cancellation.
 
 ### Speech-to-Text (`jarvis.speech.stt`)
 
@@ -82,7 +84,9 @@ end
 
 - **`schemas.py`**: Pydantic models (`ChatMessage`, `ToolCall`, `ModelResponse`) normalizing request and response structures across Ollama and cloud APIs.
 - **`prompts.py`**: Holds `SYSTEM_PROMPT`, enforcing assistant personality, sandbox constraints, and operational guidelines.
-- **`client.py`**: Dispatches requests to the backend defined by `state.active_model`.
+- **`client.py`**: `stream_llm()` emits public text deltas and a fully assembled message for Ollama, Anthropic, and OpenAI-compatible providers. Tool payloads are assembled before parsing; abnormal tool completion is rejected. `call_llm()` remains a compatibility consumer.
+- **`engine.py`**: `handle_stream()` emits text, tool lifecycle, and terminal events, with the backend fixed for the turn. `handle()` still returns the final answer and turn ID.
+- **`runtime.py`**: Routes engine events to a text consumer and optional local speech output.
 
 ---
 
@@ -101,4 +105,5 @@ Provides tools exposed to the LLM agent while enforcing sandbox boundary constra
 - **`keybindings.py`**: Attaches key handlers to the active `PromptSession`:
   - **`F1`**: Cycles between enabled models (`local` -> `claude` -> `gemini` -> `gpt`).
   - **`F2`**: Toggles microphone capture on/off.
-  - **`F3`**: Toggles voice synthesis on/off.
+  - **`F3`**: Toggles voice synthesis; muting cancels current speech.
+  - **`F4`**: Requests reply cancellation. Running synchronous tools cannot be rolled back.

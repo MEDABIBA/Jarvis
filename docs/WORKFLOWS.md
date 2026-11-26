@@ -64,21 +64,22 @@ participant Conf as AppSettings
 
 ## 3. Multilingual Speech Synthesis Pipeline
 
-Incoming text responses are analyzed for character scripts before selecting the appropriate Piper TTS voice model.
+Each response uses an explicit locale. Public text is displayed immediately and
+buffered into sentences for a bounded speech worker. Azure SDK/REST and Piper
+share a synthesis contract; playback remains separate.
 
 ```mermaid
-flowchart LR
-TEXT[Input Text String] --> REGEX{Language Detection Regex}
-REGEX -->|Contains Polish Glyphs| PL[Select Polish Voice]
-REGEX -->|Contains Cyrillic Glyphs| RU[Select Russian Voice]
-REGEX -->|Default / Latin Glyphs| EN[Select English Voice]
-
-    PL --> CACHE[Load / Fetch Cached ONNX Model]
-    RU --> CACHE
-    EN --> CACHE
-
-    CACHE --> SYNTH[PiperVoice.synthesize]
-    SYNTH --> RAW_BYTES[Audio Chunks / PCM Bytes]
-    RAW_BYTES --> SD[SoundDevice Playback]
-
+flowchart TD
+    TEXT[Public assistant text deltas] --> FILTER[Filter fenced code and extract sentences]
+    FILTER --> QUEUE[Bounded speech queue]
+    QUEUE --> NORMALIZE[Normalize using the turn locale]
+    NORMALIZE --> PROVIDER[Select configured or fallback provider]
+    PROVIDER --> PCM[Raw PCM chunks]
+    PCM --> SD[Local player]
+    PROVIDER -->|No available voice| SILENT[Continue as text only]
 ```
+
+Fallback is allowed only before the response's first audio is delivered. A later
+failure stops speech rather than replaying earlier text. Muting or F4 cancellation
+never selects another provider. See [Speech Output](SPEECH.md) for configuration
+and the exact failure/cancellation policy.

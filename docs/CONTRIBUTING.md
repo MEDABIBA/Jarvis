@@ -26,8 +26,8 @@ brew install portaudio
 git clone https://github.com/MEDABIBA/Jarvis.git
 cd Jarvis
 
-# Install all dependencies (dev + lint + test groups)
-uv sync
+# Install the application and development tools
+uv sync --group lint --group test
 
 # Copy the environment template and fill in your API keys
 cp .env.example .env
@@ -52,19 +52,19 @@ Linting, formatting, and type checking are managed via [Ruff](https://github.com
 
 ```bash
 # Lint with auto-fix
-uv run ruff check --fix
+uv run --group lint ruff check --fix
 
 # Format
-uv run ruff format
+uv run --group lint ruff format
 
 # Type check
-uv run ty check
+uv run --group lint ty check
 ```
 
 ### Test Suite
 
 ```bash
-uv run pytest
+uv run --group test pytest
 ```
 
 ### CI Pipeline
@@ -73,7 +73,8 @@ Every push to `main` and every pull request triggers the GitHub Actions workflow
 
 1. `ruff check` (no auto-fix)
 2. `ruff format --check`
-3. `ty check`
+3. `ty check` (application source)
+4. `pytest` (mocked provider, streaming, speech, and runtime regression tests)
 
 Your PR will not be merged with a failing CI.
 

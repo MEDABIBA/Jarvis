@@ -32,9 +32,15 @@
 
   > Full history on disk, looked up through a `search_history()` tool
 
-- **Stream the model answer and the TTS output by sentences**
+- [x] **Stream the model answer and the TTS output by sentences**
 
-  > Start speaking before the full answer is generated, to cut time to first sound
+  > Azure SDK/REST and Piper share a fallback service; local playback runs separately.
+  > Native Azure TextStream input, connection reuse for SDK synthesis, and live latency measurements remain follow-up work.
+
+- **Separate remote client and backend**
+
+  > Add authenticated transport for engine events and PCM, per-session model configuration,
+  > audio sequence numbers, format negotiation, and playback acknowledgements
 
 - **Ability to _*interrupt*_ Jarvis with your voice while he's answering**
 
