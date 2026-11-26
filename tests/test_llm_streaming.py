@@ -336,11 +336,12 @@ def test_retry_discards_buffered_tools_from_failed_attempt(monkeypatch):
     assert first.closed and second.closed
 
 
-def test_empty_tool_arguments_are_empty_object(monkeypatch):
+@pytest.mark.parametrize("arguments", [None, "", "{}"])
+def test_empty_tool_arguments_are_empty_object(monkeypatch, arguments):
     stream = FakeStream(
         [
             chunk(
-                calls=[tool_delta(0, id="empty", name="no_args", arguments="")],
+                calls=[tool_delta(0, id="empty", name="no_args", arguments=arguments)],
                 finish="tool_calls",
             )
         ]
@@ -348,6 +349,178 @@ def test_empty_tool_arguments_are_empty_object(monkeypatch):
     openai_stream(monkeypatch, stream)
     events = list(client.stream_llm([], [echo]))
     assert events[-1].message.tool_calls[0].function.arguments == {}
+
+
+@pytest.mark.parametrize(
+    "reason", ["length", "content_filter", "stop", "function_call", "unknown", None]
+)
+@pytest.mark.parametrize("arguments", [None, "", '{"value":"complete"}', '{"value":'])
+def test_openai_abnormal_tool_completion_never_emits_message(
+    monkeypatch, reason, arguments
+):
+    stream = FakeStream(
+        [
+            chunk("Progress"),
+            chunk(calls=[tool_delta(0, id="tool", name="echo", arguments=arguments)]),
+            chunk(finish=reason),
+            {"choices": [], "usage": {"completion_tokens": 12}},
+        ]
+    )
+    create = openai_stream(monkeypatch, stream)
+    events = client.stream_llm([], [echo])
+    assert next(events).text == "Progress"
+    expected = "before message completion" if reason is None else "Refusing tool calls"
+    with pytest.raises(RuntimeError, match=expected):
+        list(events)
+    assert stream.closed
+    assert create.call_count == 1
+
+
+def anthropic_stream(monkeypatch, stream):
+    create = Mock(return_value=stream)
+    monkeypatch.setattr(
+        client,
+        "_anthropic_client",
+        Mock(return_value=SimpleNamespace(messages=SimpleNamespace(create=create))),
+    )
+    return create
+
+
+def anthropic_tool_events(arguments, reason):
+    events = [
+        {
+            "type": "content_block_start",
+            "index": 0,
+            "content_block": {"type": "text", "text": "Progress"},
+        },
+        {
+            "type": "content_block_start",
+            "index": 1,
+            "content_block": {
+                "type": "tool_use",
+                "id": "tool",
+                "name": "echo",
+                "input": {},
+            },
+        },
+    ]
+    if arguments is not None:
+        events.append(
+            {
+                "type": "content_block_delta",
+                "index": 1,
+                "delta": {"type": "input_json_delta", "partial_json": arguments},
+            }
+        )
+    events.extend(
+        [
+            {
+                "type": "message_delta",
+                "delta": {"stop_reason": reason},
+                "usage": {"output_tokens": 9},
+            },
+            {"type": "message_stop"},
+        ]
+    )
+    return events
+
+
+@pytest.mark.parametrize(
+    "reason", ["max_tokens", "refusal", "pause_turn", "end_turn", "stop_sequence", None]
+)
+@pytest.mark.parametrize("arguments", [None, "", '{"value":"complete"}', '{"value":'])
+def test_anthropic_abnormal_tool_completion_never_emits_message(
+    monkeypatch, reason, arguments
+):
+    stream = FakeStream(anthropic_tool_events(arguments, reason))
+    create = anthropic_stream(monkeypatch, stream)
+    events = client.stream_llm([], [echo], backend="claude")
+    assert next(events).text == "Progress"
+    with pytest.raises(RuntimeError, match="Refusing tool calls"):
+        list(events)
+    assert stream.closed
+    assert create.call_count == 1
+
+
+@pytest.mark.parametrize("arguments", [None, "", "{}"])
+def test_anthropic_normal_empty_arguments_are_empty_object(monkeypatch, arguments):
+    stream = FakeStream(anthropic_tool_events(arguments, "tool_use"))
+    anthropic_stream(monkeypatch, stream)
+    events = list(client.stream_llm([], [echo], backend="claude"))
+    assert events[-1].kind == "message_complete"
+    assert events[-1].message.tool_calls[0].function.arguments == {}
+    assert stream.closed
+
+
+def test_anthropic_tool_completion_requires_message_stop(monkeypatch):
+    stream = FakeStream(anthropic_tool_events('{"value":"complete"}', "tool_use")[:-1])
+    anthropic_stream(monkeypatch, stream)
+    events = client.stream_llm([], [echo], backend="claude")
+    assert next(events).text == "Progress"
+    with pytest.raises(RuntimeError, match="before message completion"):
+        list(events)
+    assert stream.closed
+
+
+@pytest.mark.parametrize(
+    "backend, reason",
+    [
+        ("gpt", "length"),
+        ("gpt", "content_filter"),
+        ("claude", "max_tokens"),
+        ("claude", "refusal"),
+        ("claude", "pause_turn"),
+    ],
+)
+def test_abnormal_text_only_completion_returns_received_text(
+    monkeypatch, backend, reason
+):
+    if backend == "gpt":
+        stream = FakeStream([chunk("Partial text"), chunk(finish=reason)])
+        openai_stream(monkeypatch, stream)
+    else:
+        stream = FakeStream(
+            [
+                {
+                    "type": "content_block_start",
+                    "index": 0,
+                    "content_block": {"type": "text", "text": "Partial text"},
+                },
+                {"type": "message_delta", "delta": {"stop_reason": reason}},
+                {"type": "message_stop"},
+            ]
+        )
+        anthropic_stream(monkeypatch, stream)
+    events = list(client.stream_llm([], [], backend=backend))
+    assert [event.kind for event in events] == ["text_delta", "message_complete"]
+    assert events[-1].message.content == "Partial text"
+    assert events[-1].message.tool_calls is None
+    assert stream.closed
+
+
+@pytest.mark.parametrize(
+    "reason", [None, "stop", "tool_calls", "length", "content_filter"]
+)
+def test_ollama_tool_completion_reason(monkeypatch, reason):
+    stream = FakeStream(
+        [
+            {
+                "message": {
+                    "tool_calls": [{"function": {"name": "no_args", "arguments": {}}}]
+                },
+                "done": True,
+                "done_reason": reason,
+            }
+        ]
+    )
+    monkeypatch.setattr(client.ollama, "chat", Mock(return_value=stream))
+    events = client.stream_llm([], [echo], backend="local")
+    if reason in (None, "stop", "tool_calls"):
+        assert list(events)[-1].message.tool_calls[0].function.arguments == {}
+    else:
+        with pytest.raises(RuntimeError, match="Refusing tool calls"):
+            list(events)
+    assert stream.closed
 
 
 def test_ollama_indexed_argument_fragments(monkeypatch):

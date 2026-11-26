@@ -43,22 +43,46 @@ _WORDS = {
 
 
 class _MarkdownFilter:
-    """Keep only a bounded marker run, never fenced content, between deltas."""
+    """Retain delimiter counts and line state, never marker runs or fenced code.
+
+    Line-start fences require a closing line with at most three leading spaces
+    and only whitespace after the delimiter. Inline opening fences deliberately
+    retain the permissive fallback, so malformed/inline blocks stay unspoken.
+    Counts are exact integers: saturating them could let a shorter run close an
+    extremely long opening fence. Storage grows only with the integer bit length.
+    """
 
     def __init__(self) -> None:
         self.fence: str | None = None
+        self.fence_length = 0
         self.marker = ""
         self.count = 0
+        self._block_fence = False
+        self._run_at_line_start = False
+        self._indent: int | None = 0
+        self._closing = False
+
+    def _close_fence(self) -> str:
+        self.fence = None
+        self.fence_length = 0
+        self._block_fence = False
+        self._closing = False
+        return " "
 
     def _finish_marker(self) -> str:
         visible = ""
         if self.count >= 3:
             if self.fence is None:
                 self.fence = self.marker
+                self.fence_length = self.count
+                self._block_fence = self._run_at_line_start
                 visible = " "
-            elif self.fence == self.marker:
-                self.fence = None
-                visible = " "
+            elif self.fence == self.marker and self.count >= self.fence_length:
+                if not self._block_fence:
+                    visible = self._close_fence()
+                elif self._run_at_line_start:
+                    # Do not expose anything until the closing line is confirmed.
+                    self._closing = True
         self.marker = ""
         self.count = 0
         return visible
@@ -67,14 +91,30 @@ class _MarkdownFilter:
         for char in delta:
             if self.marker and char != self.marker:
                 yield from self._finish_marker()
+            if self._closing:
+                if char in "\r\n":
+                    yield from self._close_fence()
+                elif char not in " \t":
+                    self._closing = False
             if char in "`~":
-                self.marker = char
-                self.count = min(3, self.count + 1)
+                if not self.marker:
+                    self.marker = char
+                    self._run_at_line_start = self._indent is not None
+                self.count += 1
             elif self.fence is None:
                 yield char
+            if char in "\r\n":
+                self._indent = 0
+            elif self._indent is not None:
+                self._indent = (
+                    self._indent + 1 if char == " " and self._indent < 3 else None
+                )
 
     def flush(self) -> str:
-        return self._finish_marker()
+        visible = self._finish_marker()
+        if self._closing:
+            visible += self._close_fence()
+        return visible
 
 
 def _inline(text: str) -> str:

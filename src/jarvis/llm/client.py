@@ -90,6 +90,7 @@ def _stream_backend(
     usage: dict[str, Any] = {}
     message_id = str(uuid4())
     finished = False
+    terminal_reason: str | None = None
     raw: Any = None
 
     if backend == "local":
@@ -166,6 +167,7 @@ def _stream_backend(
                         call.arguments.update(args)
                 if _get(raw, "done", False):
                     finished = True
+                    terminal_reason = _get(raw, "done_reason")
                     usage = {
                         key: _get(raw, key)
                         for key in ("prompt_eval_count", "eval_count")
@@ -200,7 +202,10 @@ def _stream_backend(
                         calls[index].fragments.append(_get(delta, "partial_json") or "")
                 elif event_type == "message_delta":
                     usage.update(_usage(_get(raw, "usage")))
-                    if _get(_get(raw, "delta"), "stop_reason") == "max_tokens":
+                    reason = _get(_get(raw, "delta"), "stop_reason")
+                    if reason is not None:
+                        terminal_reason = reason
+                    if reason == "max_tokens":
                         logger.warning(
                             "Response faced max_tokens limit; raise the limit"
                         )
@@ -224,7 +229,9 @@ def _stream_backend(
                         fn = _get(tc, "function")
                         call.name += _get(fn, "name") or ""
                         call.fragments.append(_get(fn, "arguments") or "")
-                    if _get(choice, "finish_reason") is not None:
+                    reason = _get(choice, "finish_reason")
+                    if reason is not None:
+                        terminal_reason = reason
                         finished = True
             if delta_text:
                 text.append(delta_text)
@@ -236,6 +243,22 @@ def _stream_backend(
 
     if not finished:
         raise RuntimeError("LLM stream ended before message completion")
+    if calls:
+        # Valid JSON (including an empty argument buffer) does not prove that
+        # generation finished safely. Check the provider's reason before parsing
+        # or exposing any calls to the engine for execution.
+        allowed_reasons = (
+            {None, "stop", "tool_calls"}
+            if backend == "local"
+            else {"tool_use"}
+            if backend == "claude"
+            else {"tool_calls"}
+        )
+        if terminal_reason not in allowed_reasons:
+            raise RuntimeError(
+                f"Refusing tool calls from backend '{backend}' with terminal reason "
+                f"{terminal_reason!r}"
+            )
     yield LLMStreamEvent(
         kind="message_complete",
         message=ChatMessage(
@@ -259,6 +282,11 @@ def stream_llm(
 
     Backend errors propagate. Closing this iterator closes the network stream.
     Tool-support fallback is attempted once, and only before any public text.
+    Tool calls require a normal tool-completion reason (Ollama also permits its
+    normal stop/missing reason). Other reasons raise before message_complete,
+    even with valid JSON or no arguments. Text-only responses, including truncated
+    or filtered ones, return the public text received if the stream completed;
+    premature EOF remains an error for all responses.
     """
     backend = backend if backend is not None else state.active_model
     settings = get_settings()

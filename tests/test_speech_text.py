@@ -90,6 +90,74 @@ def test_other_fence_character_inside_code_cannot_close_it():
     assert collect(list("Before ```\n~~~\nSECRET.\n``` after.")) == ["Before after."]
 
 
+@pytest.mark.parametrize("marker", ["`", "~"])
+@pytest.mark.parametrize("width", [1, 2, 3, 7, 1000])
+@pytest.mark.parametrize("closing_length", [4, 5])
+def test_long_outer_fence_contains_shorter_inner_fences(marker, width, closing_length):
+    text = (
+        f"Before.\n{marker * 4}markdown\n"
+        f"{marker * 3}python\nSECRET.value().\n{marker * 3}\nSECRET tail.\n"
+        f"{marker * closing_length}\nAfter."
+    )
+    parts = [text[i:i + width] for i in range(0, len(text), width)]
+    sentences = collect(parts)
+    assert sentences == ["Before.", "After."]
+    assert to_speech(text) == "Before. After."
+    assert [to_speech(sentence) for sentence in sentences] == sentences
+
+
+@pytest.mark.parametrize("marker", ["`", "~"])
+@pytest.mark.parametrize("indent", ["", " ", "   "])
+def test_block_fence_closes_only_at_valid_line_position(marker, indent):
+    fence = marker * 4
+    text = (
+        f"Before.\n{indent}{fence}markdown\n"
+        f"code {fence} SECRET inline.\n"
+        f"    {fence}\nSECRET indented.\n"
+        f"{fence} trailing SECRET text.\n"
+        f"{indent}{fence} \t\nAfter."
+    )
+    assert collect(list(text)) == ["Before.", "After."]
+    assert to_speech(text) == "Before. After."
+
+
+@pytest.mark.parametrize("marker", ["`", "~"])
+def test_inline_fence_fallback_retains_opening_length(marker):
+    text = f"Before {marker * 4}code\n{marker * 3}\nSECRET.\n{marker * 4} after."
+    assert collect(list(text)) == ["Before after."]
+    assert to_speech(text) == "Before after."
+
+
+@pytest.mark.parametrize("marker", ["`", "~"])
+def test_unclosed_long_outer_fence_does_not_leak_after_shorter_fence(marker):
+    text = f"Before.\n{marker * 4}markdown\n{marker * 3}\nSECRET.\n{marker * 3}"
+    assert collect(list(text)) == ["Before."]
+    assert to_speech(text) == "Before."
+
+
+@pytest.mark.parametrize("ending", ["", " \t", "\r\n"])
+def test_closing_block_fence_at_end_of_input(ending):
+    text = f"Before.\n````\nSECRET.\n````{ending}"
+    assert collect(list(text)) == ["Before."]
+    assert to_speech(text) == "Before."
+
+
+def test_large_marker_runs_use_counts_without_retaining_fenced_content():
+    buffer = SentenceBuffer()
+    assert buffer.feed("Before.\n") == ["Before."]
+    for _ in range(200):
+        assert buffer.feed("`" * 250) == []
+    assert buffer._markdown.count == 50000
+    assert buffer._markdown.marker == "`"
+    assert buffer.feed("markdown\n" + "`" * 49999 + "\n") == []
+    assert buffer._markdown.fence_length == 50000
+    assert buffer.feed("SECRET " * 20000) == []
+    assert not buffer._pending.strip()
+    assert buffer._markdown.count == 0
+    assert buffer.feed("\n" + "`" * 50001 + "\nAfter.") == []
+    assert buffer.flush() == ["After."]
+
+
 def test_unterminated_code_is_discarded_even_at_flush():
     assert collect(list("Before. ```python\nSECRET!")) == ["Before."]
     assert collect(["``", "`secret"]) == []
